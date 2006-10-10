@@ -57,7 +57,7 @@ make_row_html=function( diagram, column, column_i, row_height )
 			comment_html+="<span class=\""+style+"\">"+escape_html( tag_text )+"</span>";
 		}
 	}
-	comment_html+=escape_html( node.comment );
+	comment_html+="<a href=\"/gitweb.cgi/"+diagram.m_repos[0]+"?a=commit;h="+node.id+"\">"+escape_html( node.comment )+"</a>";
 	var indent=column.lines.length*row_height;
 	comment_html="<td><div class=\"logcell\" style=\"padding-left: "+indent+"px;\">"+comment_html+"</div></td>";
 	var row_html=comment_html+"<td><div class=\"logcell\">"+escape_html( node.author )+"</div></td>";
@@ -228,6 +228,8 @@ body { height: 99.8%; font: normal normal 11px sans-serif; overflow: hidden; }
 #colauthor { width: 18em; }
 #coldate { width: 11em; }
 .logcell { height: 1.2em; overflow: hidden; white-space: nowrap; }
+.logcell a { text-decoration: none; color: #000000; }
+.logcell a:hover { text-decoration: underline; color: #880000; }
 .loghead { padding: 0 4px; background-color: #ffff99; }
 .logtag { padding: 0 4px; background-color: #99ff99; }	
 
