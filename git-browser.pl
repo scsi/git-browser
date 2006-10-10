@@ -17,7 +17,7 @@ $git::inner::git_temp="tmp";
 sub git_get_type
 {
 	my $hash = shift;
-	open my $fd, "-|", "${git::inner::gitbin}git-cat-file -t $hash" or die "git_get_type: error running git-cat-file: $!";
+	open my $fd, "-|", "${git::inner::gitbin}git-cat-file", '-t', $hash or die "git_get_type: error running git-cat-file: $!";
 	my $type = <$fd>;
 	close $fd or die "git_get_type: unable to close fd: $!";
 	chomp $type;
@@ -28,19 +28,15 @@ sub git_get_type
 sub git_read_commits
 {
 	my $arg=shift;
-	my $ids=join( " ", @{$arg->{id}} );
-	my $xids=join( " ", map( "^$_", @{$arg->{x}} ) );
-	my $paths=join( " ", @{$arg->{path}} );
 	my $MAX_COUNT= $arg->{shortcomment} ? 400 : 200;
-	my $command="${git::inner::gitbin}git-rev-list --header --parents --max-count=$MAX_COUNT";
-	$command.=" $ids";
-	$command.=" $xids";
-	$command.=" -- $paths" if $paths;
+	my @command=("${git::inner::gitbin}git-rev-list", '--header', '--parents', "--max-count=$MAX_COUNT");
+	push(@command, @{$arg->{id}}, @{$arg->{x}});
+	push(@command, '--', @{$arg->{path}}) if @{$arg->{path}};
 
 	my %commits;
 
 	$/ = "\0";
-	open my $fd, "-|", $command or die "git_read_commits: error running git-rev-list: $!";
+	open my $fd, "-|", @command or die "git_read_commits: error running git-rev-list: $!";
 	while( my $commit_line=<$fd> ) {
 		$commit_line =~ s/\r$//;
 		my @commit_lines = split '\n', $commit_line;
