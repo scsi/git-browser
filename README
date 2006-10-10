@@ -1,4 +1,3 @@
-
 This is experimental web interface for git, complementary to gitweb. 
 It visualizes commit history graph and shows commit diffs.
 It works in firefox, IE6 and Opera 8. It is not tested 
@@ -24,6 +23,7 @@ path: overrides your $PATH
 gitbin: <path to git binaries, with trailing />
 git_temp: <path where git-diff.pl will create temp files>
 http_expires: <value for CGI::header 'expires' parameter, for every responce>
+warehouse: <path to fallback dir where to look for repos>
 repos:
 <repo-name> <repo GIT_DIR>
 ...
