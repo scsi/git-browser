@@ -1,0 +1,49 @@
+From pasky@suse.cz Tue Oct 10 15:49:16 2006
+From: Petr Baudis <pasky@suse.cz>
+To: Junio C Hamano <junkio@cox.net>
+Cc: <git@vger.kernel.org>
+Subject: [PATCH] gitweb: Add link to graphiclog to the navbar
+Date: Tue, 10 Oct 2006 15:49:16 +0200
+Message-Id: <20061010134916.19315.33401.stgit@rover>
+Content-Type: text/plain; charset=utf-8; format=fixed
+Content-Transfer-Encoding: 8bit
+User-Agent: StGIT/0.10
+
+Links to git-browser.
+
+Signed-off-by: Petr Baudis <pasky@suse.cz>
+---
+
+ gitweb/gitweb.perl |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/gitweb/gitweb.perl b/gitweb/gitweb.perl
+index 324244c..beed20d 100755
+--- a/gitweb/gitweb.perl
++++ b/gitweb/gitweb.perl
+@@ -1612,7 +1612,7 @@ sub git_print_page_nav {
+ 	my ($current, $suppress, $head, $treehead, $treebase, $extra) = @_;
+ 	$extra = '' if !defined $extra; # pager or formats
+ 
+-	my @navs = qw(summary shortlog log commit commitdiff tree);
++	my @navs = qw(summary graphiclog shortlog log commit commitdiff tree);
+ 	if ($suppress) {
+ 		@navs = grep { $_ ne $suppress } @navs;
+ 	}
+@@ -1628,13 +1628,14 @@ sub git_print_page_nav {
+ 			}
+ 		}
+ 	}
++	$arg{graphiclog}{_href} = '/git-browser/by-commit.html?r='.$project;
+ 	$arg{tree}{hash} = $treehead if defined $treehead;
+ 	$arg{tree}{hash_base} = $treebase if defined $treebase;
+ 
+ 	print "<div class=\"page_nav\">\n" .
+ 		(join " | ",
+ 		 map { $_ eq $current ?
+-		       $_ : $cgi->a({-href => href(%{$arg{$_}})}, "$_")
++		       $_ : $cgi->a({-href => ($arg{$_}{_href} ? $arg{$_}{_href} : href(%{$arg{$_}}))}, "$_")
+ 		 } @navs);
+ 	print "<br/>\n$extra<br/>\n" .
+ 	      "</div>\n";
+
