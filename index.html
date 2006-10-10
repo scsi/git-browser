@@ -91,7 +91,7 @@ update_selected=function()
 	label.innerHTML="";
 	if( url_param!="" ) {
 		link.style.visibility="visible";
-		link.href="by-date.html?"+url_param;
+		link.href="by-commit.html?"+url_param;
 		label.appendChild( document.createTextNode( "selected: "+text ) );
 	}else {
 		link.style.visibility="hidden";
@@ -181,7 +181,7 @@ onload=function()
 			var repo_name=repos[repo_i];
 			data._replicate.push( { name: "repo", data: {
 				reponame: repos[repo_i],
-				browseurl: { _href: "by-date.html?r="+encodeURIComponent( repo_name ) },
+				browseurl: { _href: "by-commit.html?r="+encodeURIComponent( repo_name ) },
 				selectspecific: { _process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "selectspecific_id", handler: selectspecific_click } },
 				selectall: { _process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "selectall_id", handler: selectall_click  } },
 				headscount: { _process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "headscount_id" } },
