@@ -1,0 +1,14 @@
+
+For running tests, load run-tests.html in your browser.
+
+Tests expect git-browser.pl and this directory (tests) 
+to be found at http://localhost/git-browser
+
+Tests expect to find these two repositories in git-browser.conf: 
+
+test tests/test.git
+boo no-such-dir
+
+The first one may be created by running mk-test-git.sh.
+The second one is intentionally nonexistent (it is used
+for testing error reporting)

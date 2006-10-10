@@ -1,0 +1,245 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>git browser</title>
+<!--
+Copyright (C) 2005, Artem Khodush <greenkaa@gmail.com>
+
+This file is licensed under the GNU General Public License version 2.
+-->
+<script type="text/javascript" src="js.lib/DomTemplate.js"></script>
+<script type="text/javascript" src="js.lib/InvisibleRequest.js"></script>
+<script type="text/javascript" src="js.lib/Motion.js"></script>
+<script type="text/javascript" src="js.lib/wz_jsgraphics.js"></script>
+<script type="text/javascript" src="GitBrowser.js"></script>
+<script type="text/javascript" src="GitDiagram.js"></script>
+<script type="text/javascript">
+<!--
+
+g_diagram=null;
+
+format_log_date_number=function( n )
+{
+	var s= n<10 ? "0" : "";
+	return s+n;
+}
+format_log_date=function( date )
+{
+	var d=new Date( date );
+	return d.getFullYear()+"-"
+		+format_log_date_number( 1+d.getMonth() )+"-"
+		+format_log_date_number( d.getDate() )+" "
+		+format_log_date_number( d.getHours() )+":"
+		+format_log_date_number( d.getMinutes() )+":"
+		+format_log_date_number( d.getSeconds() );
+}
+escape_html=function( s )
+{
+	s=s.replace( /\&/g, "&amp;" );
+	s=s.replace( /\</g, "&lt;" );
+	s=s.replace( /\>/g, "&gt;" );
+	return s;
+}
+make_row_html=function( diagram, column, column_i, row_height )
+{
+	var node=column.node;
+	var label=diagram.m_labels[node.id];
+	var comment_html="";
+	if( label!=null ) {
+		for( var tag_i=0; tag_i<label.tags.length; ++tag_i ) {
+			var tag=label.tags[tag_i];
+			var tag_text=tag.name;
+			// if diagram shows more than one repo, put repo name in front of each tag/head
+			if( diagram.m_repos.length>1 ) {
+				tag_text=tag.repo+":"+tag_text;
+			}
+			var style= tag.type=="t" ? "logtag" : "loghead";
+			comment_html+="<span class=\""+style+"\">"+escape_html( tag_text )+"</span>";
+		}
+	}
+	comment_html+=escape_html( node.comment );
+	var indent=column.lines.length*row_height;
+	comment_html="<td><div class=\"logcell\" style=\"padding-left: "+indent+"px;\">"+comment_html+"</div></td>";
+	var row_html=comment_html+"<td><div class=\"logcell\">"+escape_html( node.author )+"</div></td>";
+	row_html+="<td><div class=\"logcell\">"+format_log_date( node.date )+"</div></td>";
+	var row_color=(diagram.m_date_columns.length-column_i)%2==0 ? GitDiagram._g_color_odd_day_background : GitDiagram._g_color_even_day_background;
+	row_html="<tr style=\"background-color: "+row_color+";\">"+row_html+"</tr>";
+	return row_html;
+}
+fill_log=function( context )
+{
+	var column_i=context.diagram.m_date_columns.length; // diagram date_columns are becoming table rows - the diagram is rotated
+	var log=document.getElementById( "log" );
+	var tbody=document.getElementById( "logbody" );
+	var row= tbody==null ? null : tbody.firstChild;
+	var row_height= row==null ? null : row.clientHeight;
+	var rows_html="";
+	var table_start_html="<table id=\"logtable\" width=\"98%\" cellpadding=\"0\" cellspacing=\"0\"><colgroup><col id=\"colcomment\" /><col id=\"colauthor\" /><col id=\"coldate\" /></colgroup><tbody id=\"logbody\">";
+	var table_end_html="</tbody></table>";
+	while( column_i!=0 ) {
+		var column=context.diagram.m_date_columns[column_i-1];
+		if( row_height==null ) { // special handling to get first row height
+			log.innerHTML=table_start_html+make_row_html( context.diagram, column, column_i, 0 )+table_end_html;
+			tbody=document.getElementById( "logbody" );
+			row_height=tbody.firstChild.clientHeight;
+		}
+		rows_html+=make_row_html( context.diagram, column, column_i, row_height );
+		--column_i;
+	}
+	log.innerHTML=table_start_html+rows_html+table_end_html;
+	document.getElementById( "logtable" ).onclick=log_onclick;
+}
+// global initialization, diagram loading
+draw_diagram=function( diagram )
+{
+	var log=document.getElementById( "log" );
+	var logbody=document.getElementById( "logbody" );
+	if( log!=null && logbody!=null && logbody.firstChild!=null ) {
+		diagram.draw( logbody.firstChild.clientHeight, log.scrollTop );
+	}
+}
+place_and_draw=function( context )
+{
+	context.diagram.place_nodes( false );
+	fill_log( context );
+	draw_diagram( context.diagram );
+	GitBrowser.title_update( { diagram: context.diagram } );
+}
+on_title_loaded=function( context )
+{
+	context.select_other_btn.style.visibility="hidden";
+}
+
+/* returns {
+x, y: pixels, relative to the diagram div origin
+id, tag: decoded by GitDiagram.match_id from event target id
+column: the column the mouse is in
+} */
+decode_mouse_event=function( event )
+{
+	var e={};
+	if( event==null ) {
+		event=window.event;
+	}
+	var elm= event.target!=null ? event.target : event.srcElement;
+	if( elm!=null && elm.id!=null ) {
+		var idtag=g_diagram._match_id( elm.id );
+		if( idtag!=null ) {
+			e.id=idtag.id;
+			e.tag=idtag.tag;
+		}
+	}
+	var mouse_pos=Motion.get_event_coords( event );
+	var diagram_pos=Motion.get_page_coords( document.getElementById( "diagram" ) );
+	e.x=mouse_pos.x-diagram_pos.x;
+	e.y=mouse_pos.y-diagram_pos.y;
+	var log=document.getElementById( "log" );
+	var logbody=document.getElementById( "logbody" );
+	if( log!=null && logbody!=null && logbody.firstChild!=null ) {
+		var column_i=g_diagram.m_date_columns.length-1-Math.floor( (mouse_pos.y+log.scrollTop)/logbody.firstChild.clientHeight );
+		if( column_i>=0 && column_i<g_diagram.m_date_columns.length ) {
+			e.column=g_diagram.m_date_columns[column_i];
+		}
+	}
+	return e;
+}
+
+diagram_on_mousemove=function( event )
+{
+	var e=decode_mouse_event( event );
+	var s="";
+	if( e.id!=null && e.tag!=null ) {
+		s+=e.tag+" id: "+e.id;
+	}
+	if( e.column!=null ) {
+		s+=" col "+format_log_date( e.column.date );
+	}
+//	GitBrowser.status_show( "x: "+e.x+" y: "+e.y+" "+s );
+}
+log_onclick=function( event )
+{
+	var e=decode_mouse_event( event );
+	if( e.column!=null ) {
+//		GitBrowser.status_show( "click column "+e.column.node.comment );
+	}
+}
+
+g_ui_map={
+};
+onload=function()
+{
+	diagram_div=document.getElementById( "diagram" );
+	g_diagram=new GitDiagram( {
+		container_element: diagram_div,
+		style: "by-commit",
+		ui_handler: GitBrowser.diagram_ui_handler,
+		ui_handler_arg: g_ui_map
+	}  );
+	GitBrowser.init( {
+		repos: GitBrowser.repos_decode_location( location ),
+		diagram_div: diagram_div, // diagram_div is a payload
+		diagram: g_diagram,
+		title_loaded_handler: on_title_loaded,
+		commits_first_loaded_handler: place_and_draw,
+		commits_more_loaded_handler: place_and_draw,
+		shortcomment: "1"
+	} );
+	var log_div=document.getElementById( "log" );
+	Motion.track_scroll( { node: log_div, handler: draw_diagram, handler_arg: g_diagram } );
+	diagram_div.onmousemove=diagram_on_mousemove;
+	// IE assigns log column widths improperly, unless white-space: nowrap is removed from the .logcell style
+	var span=document.createElement( "SPAN" );
+	span.innerHTML="<!--[if IE]><br /><![endif]-"+"->";
+	var is_ie=span.getElementsByTagName( "BR" ).length>0;
+	if( is_ie ) {
+		var sheets=document.styleSheets;
+		for( var sheet_i=0; sheet_i<sheets.length; ++sheet_i ) {
+			var rules=sheets[sheet_i].rules;
+			for( var rule_i=0; rule_i<rules.length; ++rule_i ) {
+				var rule=rules[rule_i];
+				if( rule.selectorText==".logcell" ) {
+					rule.style.whiteSpace="";
+				}
+			}
+		}
+	}
+}
+
+// debug output
+xdp=function( msg )
+{
+	var o=document.getElementById( "output" );
+	o.style.display="";
+	o.appendChild( document.createElement( "DIV" ) ).appendChild( document.createTextNode( msg ) );
+}
+
+//-->
+</script>
+<link rel="stylesheet" type="text/css" href="GitBrowser.css"></link>
+<style type="text/css">
+html { height: 99.8%; }
+body { height: 99.8%; font: normal normal 11px sans-serif; overflow: hidden; }
+
+#diagram { z-index: 3; position: absolute; height: 85%; width: 99%; }
+#log { z-index: 1; height: 85%; width: 98%; overflow: auto; }
+
+/* styles for log table elements created by fill_log and make_row_html */
+#log td { padding: 1px 2px; border-right: 1px solid #888; }
+#colauthor { width: 18em; }
+#coldate { width: 11em; }
+.logcell { height: 1.2em; overflow: hidden; white-space: nowrap; }
+.loghead { padding: 0 4px; background-color: #ffff99; }
+.logtag { padding: 0 4px; background-color: #99ff99; }	
+
+</style>
+</head>
+<body>
+
+<div id="diagram"></div>
+<div id="log"></div>
+
+<div id="output" style="display: none; position:absolute; top: 360px; right: 0; z-index:100; background-color: #fff; width: 900px; max-height: 300px; overflow: auto;"></div> <!-- debug output -->
+
+</body>
+</html>
+

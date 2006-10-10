@@ -1,0 +1,104 @@
+<html>
+<head>
+<title>s</title>
+<!-- interactive test for track_scroll. does not run under run-tests.html -->
+<script type="text/javascript" src="../../js.lib/Motion.js"></script>
+<script type="text/javascript">
+<!--
+
+var g_line_count=200;
+
+function fill_scroller( scroller )
+{
+	for( var i=0; i<g_line_count; ++i ) {
+		var line=document.createElement( "DIV" );
+		line.style.backgroundColor= (i%2) ? "#fff" : "#f8fff8";
+		line.id="line"+i;
+		line.appendChild( document.createTextNode( "line "+i ) );
+		scroller.appendChild( line );
+	}
+}
+
+function xdp( msg )
+{
+	document.getElementById( "output" ).appendChild( document.createElement( "DIV" ) ).appendChild( document.createTextNode( msg ) );
+}
+
+function scroll1_into_view()
+{
+	alert( "not implemented!" );
+/*
+	var id=document.getElementById( "input_id" ).value;
+	var line=document.getElementById( "line"+id );
+	var scroller=document.getElementById( "scroller" );
+	if( line!=null ) {
+		var g_line_height=scroller.scrollHeight/g_line_count;
+		scroller.scrollTop=id*g_line_height;
+		// XXX IE does call onscroll when changing scrollTop, mozilla does not.
+		scroll_complete();
+	}
+*/
+}
+
+function scroll2_into_view()
+{
+	alert( "not implemented!" );
+/*
+	var id=document.getElementById( "input_id" ).value;
+	var line=document.getElementById( "line"+id );
+	var scroller=document.getElementById( "scroller" );
+	if( line!=null ) {
+		var g_line_height=scroller.scrollHeight/g_line_count;
+		scroller.scrollTop=id*g_line_height;
+		// XXX IE does call onscroll when changing scrollTop, mozilla does not.
+		scroll_complete();
+	}
+*/
+}
+
+function on_scroller1( scroller )
+{
+	var g_line_height=scroller.scrollHeight/g_line_count;
+	var line_no=Math.floor( scroller.scrollTop/g_line_height );
+	var rem=scroller.scrollTop-g_line_height*line_no;
+	xdp( "scroll1 complete. line: "+line_no+" rem "+rem+"px scrollHeight: "+scroller.scrollHeight );
+}
+
+function on_scroller2( scroller )
+{
+	var g_line_height=scroller.scrollHeight/g_line_count;
+	var line_no=Math.floor( scroller.scrollTop/g_line_height );
+	var rem=scroller.scrollTop-g_line_height*line_no;
+	xdp( "scroll2 complete. line: "+line_no+" rem "+rem+"px scrollHeight: "+scroller.scrollHeight );
+}
+
+onload=function()
+{
+	var scroller1=document.getElementById( "scroller1" );
+	fill_scroller( scroller1 );
+
+	var scroller2=document.getElementById( "scroller2" );
+	fill_scroller( scroller2 );
+
+	Motion.track_scroll( { node: scroller1, handler: on_scroller1, handler_arg: scroller1 } );
+	Motion.track_scroll( { node: scroller2, handler: on_scroller2, handler_arg: scroller2 } );
+
+	document.getElementById( "scroll1_into_btn" ).onclick=scroll1_into_view;
+	document.getElementById( "scroll2_into_btn" ).onclick=scroll2_into_view;
+}
+
+-->
+</script>
+</head>
+<body>
+<input type="text" id="input1_id" /><input type="button" value="scroll into view" id="scroll1_into_btn" />
+<br />
+<input type="text" id="input2_id" /><input type="button" value="scroll into view" id="scroll2_into_btn" />
+
+<div id="scroller1" style="position: absolute; top:80px; left: 10px; width: 400px; height: 200px; border: 1px solid #000; overflow: auto;"></div>
+
+<div id="scroller2" style="position: absolute; top:10px; left: 500px; width: 400px; height: 200px; border: 1px solid #000; overflow: auto;"></div>
+
+<div id="output" style="position: absolute; left: 10px; bottom: 0; width: 800px; height: 200px; border: 1px solid #500; overflow: auto;"></div>
+
+</body>

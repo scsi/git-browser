@@ -1,0 +1,18 @@
+* { padding: 0; margin: 0 }
+body { font: normal normal 12px sans-serif; }
+
+.linkbutton 	{ background-color: #dde; padding: 1px 5px; margin: 3px 0; border: 1px solid #a0a0ff; text-decoration: none; color: #008; }
+.linkbutton:hover { border: 1px solid #0000ff; }
+.linkbutton:visited { color: #606; }
+.button 	{ background-color: #dde; padding: 1px 5px; margin: 3px 0; border: 1px solid #a0a0ff; text-decoration: none; color: #000; }
+.button:hover { border: 1px solid #0000ff; }
+.button:visited { color: #000; }
+
+.title td { padding: 2px 5px; font-size: 12px; }
+
+.filterdialog { border: 1px solid #777; margin: 2px; position: absolute; width: 380px;
+			padding: 5px; 	z-index: 10; background-color: #f8f8ff;
+		}
+.filtertable { width: 100%; }
+.filterarea { border: 1px solid #555; height: 3em; width: 18em; background-color: #fff; padding: 2px; }
+.filterhint { font-size: 11px; }

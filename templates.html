@@ -1,0 +1,54 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<!--
+Copyright (C) 2005, Artem Khodush <greenkaa@gmail.com>
+
+This file is licensed under the GNU General Public License version 2.
+-->
+<body>
+
+<!-- this file contains common HTML templates -->
+
+<!--
+the templates should be "wrapped", and the third argument
+to DomTemplate.apply should not be null. Otherwize, (when the elements
+are not appended to the document immediately after cloneNode),
+FireFox seems to reset to null all onclick handlers in template elements
+that came from another document, and it does so in a second or so after cloneNode,
+so the handlers that were assigned e.g. in DomTemplate.apply are lost.
+-->
+
+<div id="titletemplate">
+<table id="title" class="title"><tr>
+<td>Starting from: <span id="selectedtext"></span></td>
+<td><a id="selectother" class="linkbutton" href="index.html">select other</a></td>
+<td><span id="commitcount"></span><a id="loadmore" class="button" style="visibility: hidden;">load more</a></td>
+<td><a id="filtershow" class="button">filter...</a></td>
+<td>&nbsp;&nbsp;<a href="/">home</a></td>
+</tr></table>
+</div>
+
+<div id="filterdialogtemplate">
+<div id="filterdialog" class="filterdialog" style="display: none;">
+filter the diagram:
+<table id="filtertable" class="filtertable" cellpadding="4" cellspacing="4">
+<tr>
+<td align="right" valign="top">exclude refs:</td>
+<td><input type="textarea" id="filterexclude" class="filterarea"/></td>
+</tr>
+<tr>
+<td align="right" valign="top">only affecting paths:</td>
+<td><input type="textarea" id="filterpath" class="filterarea"/></td>
+</tr>
+<tr>
+<td>&nbsp;</td>
+<td><span class="filterhint">(lists are space separated)</span></td>
+</tr>
+</table>
+&nbsp;<a class="button" id="filterreload">reload diagram</a>
+&nbsp;<a class="button" id="filterclear">clear</a>
+&nbsp;<a class="button" id="filterclose">close</a>
+</div>
+</div>
+
+</body>

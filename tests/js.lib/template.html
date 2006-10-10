@@ -1,0 +1,61 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<script type="text/javascript" src="../../js.lib/DomTemplate.js"></script>
+<script type="text/javascript">
+<!--
+
+function print( node )
+{
+	var output=document.getElementById( "output" );
+	var s=document.createElement( "DIV" );
+	s.appendChild( node.cloneNode( true ) ); // mozilla lacks outerHTML, extraneous  wrap/unwrap is necessary
+	var str=s.innerHTML;
+	s.innerHTML="";
+	s.appendChild( document.createTextNode( str ) );
+	output.appendChild( s );
+	output.appendChild( node );
+}
+
+function button_1()
+{
+	var txt=document.getElementById( "input" ).value;
+	var t=document.getElementById( "template" );
+	var r;
+	r=DomTemplate.apply( t, { link: { _href:"zzzzz.html", _text:"link to zzzzz" }, title: "a title" } );
+	print( r );
+	r=DomTemplate.apply( t, { link: [ { _href:"1.html", _text:"link to 1" }, { _href:"2.html", _text:"link to 2" } ], title: txt } );
+	print( r );
+}
+
+function test_1( t )
+{
+	t.plan( 2 );
+	var template=document.getElementById( "template" );
+	var r1=DomTemplate.apply( template, { link: { _href:"zzzzz.html", _text:"link to zzzzz" }, title: "a title" } );
+	var e1="<div id=\"template3\"><p><span id=\"title1\" onclick=\"alert( 'zzz' );\">a title</span><br/>some text<a id=\"link2\"  href=\"zzzzz.html\">link to zzzzz</a></p></div>";
+	t.html_eq( r1, e1, "1" );
+	var r2=DomTemplate.apply( template, { link: [ { _href:"1.html", _text:"link to 1" }, { _href:"2.html", _text:"link to 2" } ], title: "yy" } );
+	var e2="<div id=\"template7\"><p><span id=\"title4\" onclick=\"alert( 'zzz' );\">yy</span><br>some text<a id=\"link5\" href=\"1.html\">link to 1</a><a id=\"link6\" href=\"2.html\">link to 2</a></p></div>";
+	t.html_eq( r2, e2, "2" );
+}
+
+// -->
+</script>
+</head>
+<body>
+<input type="text" id="input"/>
+<input type="button" id="button1" value="test 1" onclick="button_1();"/>
+<br/>
+
+<div id="template">
+<p ><span id="title" onclick="alert( 'zzz' );">Sample Title</span><br/>
+some text
+<a id="link"  href="sample.html">sample</a>
+</p>
+</div>
+
+<div id="output"></div>
+
+</body>
+</html>

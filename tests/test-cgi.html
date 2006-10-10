@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>test for git-browser.pl</title>
+<script type="text/javascript" src="../js.lib/InvisibleRequest.js"></script>
+<script type="text/javascript" src="../js.lib/Motion.js"></script>
+<script type="text/javascript" src="../js.lib/DomTemplate.js"></script>
+<script type="text/javascript" src="../GitBrowser.js"></script>
+<script type="text/javascript">
+<!--
+
+function check_repo_names( result, tst )
+{
+	for( var i=0; i<result.length; ++i ) {
+		if( result[i]=="test" ) {
+			return true;
+		}
+	}
+	return false;
+}
+
+function test_1( t )
+{
+	t.plan( 2 );
+	t.wait_result( 2 );
+	InvisibleRequest.get( {
+		url: "http://localhost/git-browser/git-browser.pl?sub=foo",
+		handler: function( doc ) { t.eq( doc.error, "git-browser.pl: no procedure 'foo' in either git or main package", "test_1 error1" ); },
+		error_handler: function( msg ) { t.fail( "error requesting git-browser.pl: "+msg ); }
+	} );
+	InvisibleRequest.get( {
+		url: "http://localhost/git-browser/git-browser.pl?sub=get_repo_names",
+		handler: function( doc ) { t.ok( check_repo_names( doc.result ), "get_repo_names result 1" ); },
+		error_handler: function( msg ) { t.fail( "error requesting git-browser.pl: "+msg ); }
+	} );
+}
+
+function map( a, f )
+{
+	var result=[];
+	for( var i=0; i<a.length; ++i ) {
+		result.push( f( a[i] ) );
+	}
+	return result;
+}
+
+function test_2( t )
+{
+	t.plan( 7 );
+	t.wait_result( 1 );
+	var head_ids=[];
+	GitBrowser._g_server_url="http://localhost/git-browser/git-browser.pl"; // this file is in not in the same directory as git-browser.pl, and InvisibleRequest does not do relative paths.
+	GitBrowser.set_error_handler( function( msg ) { t.fail( "call_server 1 failed. msg: "+msg ); } );
+	GitBrowser.call_server( { sub: "get_repo_names", handler: function( result ) {
+		t.ok( check_repo_names( result ),  "get_repo_names result 2" );
+	} } );
+	t.delay_call( 1, function() { // set_error_handler won't work without delay
+		GitBrowser.set_error_handler( function( msg ) { t.eq(  msg, "git-browser.pl: no procedure 'foo' in either git or main package", "test_2 error1" ); } );
+		GitBrowser.call_server( { sub: "foo", handler: function( result ) { t.fail( "unreachable in test_2" ); } } );
+	}, function() {
+		GitBrowser.set_error_handler( function( msg ) { t.fail( "call_server 2 failed. msg: "+msg ); } );
+		GitBrowser.call_server( { repo: "test", sub: "get_ref_names", handler: function( result ) {
+			result.heads.sort();
+			t.eq( result, { heads: ["master", "mybranch"], tags: ["my-first-tag"] }, "all ref names in test repo" );
+		} } );
+	}, function() {
+		GitBrowser.set_error_handler( function( msg ) { t.eq( msg, "git-browser.pl: unknown repository name specified: xxx", "refs from unknown repo" ); } );
+		GitBrowser.call_server( { repo: "xxx", sub: "get_ref_names", handler: function() { t.fail( "unreachable: refs from unknown repo" ); } } );
+	}, function() {
+		GitBrowser.set_error_handler( function( msg ) { t.like( msg, /^error/, "refs from non-existent repo" ); } );
+		GitBrowser.call_server( { repo: "boo", sub: "get_ref_names", handler: function() { t.fail( "unreachable: refs from non-existent repo" ); } } );
+	}, function() {
+		GitBrowser.set_error_handler( function( msg ) { t.fail( "call_server 3 failed. msg: "+msg ); } );
+		GitBrowser.call_server( { repo: "test", sub: "commits_from_refs", sub_args: { ref: ["h,mybranch"] }, handler: function( result ) {
+			var ids=[];
+			for( var id in result.commits ) {
+				ids.push( id );
+			}
+			t.eq( ids.length, 3, "test commits_from_refs 1" );
+//			ids.sort();
+//			t.eq( ids, ["1b6b5f595ce00f274f128a90ada1649fba62f5d3","8b606fd10094add3b39637864c75c66ec7d27644","b2b18d953ef86dc8f884debe00bf010e483bc4f0"], "test get_n_commits 1" );
+		} } );
+	}, function() {
+		GitBrowser.call_server( { repo: "test", sub: "commits_from_refs", sub_args: { ref: ["r,all"] }, handler: function( result ) {
+			var ids=[];
+			for( var id in result.commits ) {
+				ids.push( id );
+			}
+			t.eq( ids.length, 5, "test commits_from_refs 2" );
+//			ids.sort();
+//			t.eq( ids, ["0c55231fb3f4c32ae74b59b7770579702ed0e8d4","1b6b5f595ce00f274f128a90ada1649fba62f5d3","67fc3bafcd8d4103d133336b6d1e479f1c18fbef",
+//					"8b606fd10094add3b39637864c75c66ec7d27644","b2b18d953ef86dc8f884debe00bf010e483bc4f0"], "test get_n_commits 1000" );
+		} } );
+	} );
+}
+
+//-->
+</script>
+<style type="text/css">
+</style>
+</head>
+<body>
+</body>
+

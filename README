@@ -1,0 +1,29 @@
+
+This is experimental web interface for git, complementary to gitweb. 
+It visualizes commit history graph and shows commit diffs.
+It works in firefox, IE6 and Opera 8. It is not tested 
+and most probably broken in any other browser. 
+Since all UI is done in heavy javascript, 
+it's rather demanding for resources on client side.
+
+SETUP
+
+cp *.html *.js *.pl *.css js.lib/* JSON/* <server-dir>
+
+make sure that git-browser.pl and git-diff.pl are runnable as cgi scripts
+make sure that html files are served as having UTF-8 charset
+
+git-browser.pl reads git-browser.conf file in the current directory.
+Everything in the file is optional, but with empty repository list 
+git browser will show nothing. Sample variant of git-browser.conf
+is provided as git-browser.conf.sample.
+
+Format of the file:
+
+path: overrides your $PATH
+gitbin: <path to git binaries, with trailing />
+git_temp: <path where git-diff.pl will create temp files>
+http_expires: <value for CGI::header 'expires' parameter, for every responce>
+repos:
+<repo-name> <repo GIT_DIR>
+...

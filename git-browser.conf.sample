@@ -1,0 +1,7 @@
+path: /usr/bin
+gitbin: /d/src/git/
+repos:
+test tests/test.git
+git /d/src/git/.git
+git-browser .git
+gitk /d/src/gitk/.git

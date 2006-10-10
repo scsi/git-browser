@@ -1,0 +1,17 @@
+done. 	merge lines, arrows
+done. 	h-clip labels
+done.	drag -> Motion
+done.	splitter -> Motion
+done.	index page: repo names, expandable label count, diagram starting points selection
+done.	multiple repositories on one diagram
+done.	"read more commits" button
+done.	fix too deep recursion in _propagate_absolute_y_offset_x in IE and firefox
+done.	decorate popus (arrows, buttons, separator below author)
+done.	mark root node of the trunk (with different color?)
+done.	diff pane: header, diff
+done.	sort git-browser.pl arguments in javascript before issuing server request
+done.	put expires into git-browser.pl http header
+done.	use author time instead of committer time for nodes for which it does not contradict parent-children order
+done.	put labels on trunks when the trunks go off the right screen edge, and labels are off-screen
+done.	show 'not loaded yet' in popups for not loaded yet parents
+	fix by-commit displaying for f73195ad7e68fb4e546350222d31e19ebc1d3578 from Linus tree ([PATCH] matroxfb: Set maxhipri to 0 Ville Syrj?l? <syrjala@sci.fi> 2005-11-07 18:53:54)

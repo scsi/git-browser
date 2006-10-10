@@ -1,0 +1,258 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!--
+Copyright (C) 2005, Artem Khodush <greenkaa@gmail.com>
+
+This file is licensed under the GNU General Public License version 2.
+-->
+<html>
+<head>
+<title>select repositories to browse</title>
+<script type="text/javascript" src="js.lib/DomTemplate.js"></script>
+<script type="text/javascript" src="js.lib/InvisibleRequest.js"></script>
+<script type="text/javascript" src="GitBrowser.js"></script>
+<script type="text/javascript">
+<!--
+
+g_repo_map={};
+
+setup_map_field=function( n, arg ) {
+	if( arg.handler!=null ) {
+		n.onclick=arg.handler;
+	}
+	var repo=g_repo_map[arg.repo_name];
+	if( repo==null ) {
+		g_repo_map[arg.repo_name]={};
+		repo=g_repo_map[arg.repo_name];
+		repo.name=arg.repo_name;
+	}
+	if( arg.id_field!=null ) {
+		repo[arg.id_field]=n.id;
+	}else if( arg.ref_kind!=null ) {
+		if( repo.refs==null ) {
+			repo.refs=[];
+		}
+		repo.refs.push( { ref_kind: arg.ref_kind, ref_name: arg.ref_name, ref_id: n.id } );
+	}
+}
+find_repo_by=function( id_field, id )
+{
+	for( var repo_name in g_repo_map ) {
+		var repo=g_repo_map[repo_name];
+		if( repo[id_field]==id ) {
+			return repo;
+		}
+	}
+	return null;
+}
+find_ref_by_id=function( id )
+{
+	for( var repo_name in g_repo_map ) {
+		var repo=g_repo_map[repo_name];
+		if( repo!=null && repo.refs!=null ) {
+			for( var i=0; i<repo.refs.length; ++i ) {
+				if( repo.refs[i].ref_id==id ) {
+					return repo.refs[i];
+				}
+			}
+		}
+	}
+	return null;
+}
+update_selected=function()
+{
+	var repos={};
+	for( var repo_name in g_repo_map ) {
+		var this_repo=g_repo_map[repo_name];
+		if( this_repo!=null ) {
+			var repo={ heads: [], tags: [] };
+			if( this_repo.selected ) {
+				repo.all_heads=true;
+			}
+			if( this_repo.refs!=null ) {
+				for( var ref_i=0; ref_i<this_repo.refs.length; ++ref_i ) {
+					var ref=this_repo.refs[ref_i];
+					if( ref.selected ) {
+						if( ref.ref_kind=="t" ) {
+							repo.tags.push( ref.ref_name );
+						}else if( ref.ref_kind=="h" && !this_repo.selected ) {
+							repo.heads.push( ref.ref_name );
+						}
+					}
+				}
+			}
+			repos[repo_name]=repo;
+		}
+	}
+	var url_param=GitBrowser.repos_encode_url_param( repos );
+	var text=GitBrowser.repos_encode_text( repos );
+	
+	var link=document.getElementById( "browseselected" );
+	var label=document.getElementById( "selected_text" );
+	label.innerHTML="";
+	if( url_param!="" ) {
+		link.style.visibility="visible";
+		link.href="by-date.html?"+url_param;
+		label.appendChild( document.createTextNode( "selected: "+text ) );
+	}else {
+		link.style.visibility="hidden";
+	}
+}
+
+selectspecific_click=function()
+{
+	var repo=find_repo_by( "selectspecific_id", this.id );
+	var refs=document.getElementById( repo.refs_id );
+	if( refs.style.display=="none" ) {
+		refs.style.display="";
+	}else {
+		refs.style.display="none";
+	}
+}
+selectall_click=function()
+{
+	var repo=find_repo_by( "selectall_id", this.id );
+	repo.selected=this.checked;
+	update_selected();
+	if( repo.refs!=null ) {
+		for( var ref_i=0; ref_i<repo.refs.length; ++ref_i ) {
+			var ref=repo.refs[ref_i];
+			if( ref.ref_kind=="h" ) {
+				var ref_check=document.getElementById( repo.refs[ref_i].ref_id );
+				if( this.checked ) {
+					ref_check.checked=true;
+					ref_check.disabled=true;
+				}else {
+					ref_check.disabled=false;
+					ref_check.checked=ref.selected;
+				}
+			}
+		}
+	}
+}
+selectref_click=function()
+{
+	var ref=find_ref_by_id( this.id );
+	ref.selected=this.checked;
+	update_selected();
+}
+
+fill_refs_status=function( repo_name )
+{
+	GitBrowser.status_show( "loading "+repo_name+" refs..." );
+}
+fill_refs=function( refs, repo_name )
+{
+	var repo=g_repo_map[repo_name];
+	if( refs.heads.length>0 || refs.tags.length>0 ) {
+		document.getElementById( repo.selectspecific_id ).style.visibility="visible";
+	}
+	if( refs.heads.length>0 ) {
+		document.getElementById( repo.headscount_id ).appendChild( document.createTextNode( refs.heads.length+" heads " ) );
+		document.getElementById( repo.headshead_id ).style.visibility="visible";
+	}
+	if( refs.tags.length>0 ) {
+		document.getElementById( repo.tagscount_id ).appendChild( document.createTextNode( refs.tags.length+" tags " ) );
+		document.getElementById( repo.tagshead_id ).style.visibility="visible";
+	}
+	var limit=Math.max( refs.tags.length, refs.heads.length );
+	var table=document.getElementById( repo.refstable_id );
+	for( var i=0; i<limit; ++i ) {
+		var d={};
+		if( i<refs.heads.length ) {
+			d.selecthead={ _process: setup_map_field, _process_arg: { repo_name: repo_name, ref_kind: "h", ref_name: refs.heads[i], handler: selectref_click } },
+			d.headname=" "+refs.heads[i]
+		}
+		if( i<refs.tags.length ) {
+			d.selecttag={ _process: setup_map_field, _process_arg: { repo_name: repo_name, ref_kind: "t", ref_name: refs.tags[i], handler: selectref_click } },
+			d.tagname=" "+refs.tags[i]
+		};
+		table.lastChild.appendChild( DomTemplate.apply( document.getElementById( "refsrow" ), d ) ); // beware of tbody
+	}
+}
+
+onload=function()
+{
+	GitBrowser.setup_status_error();
+	GitBrowser.status_show( "loading..." );
+	GitBrowser.call_server( { sub: "get_repo_names", handler: function( repos ) {
+		var data={ _replicate: [] };
+		var chain=[];
+		for( var repo_i=0; repo_i<repos.length; ++repo_i ) {
+			var repo_name=repos[repo_i];
+			data._replicate.push( { name: "repo", data: {
+				reponame: repos[repo_i],
+				browseurl: { _href: "by-date.html?r="+encodeURIComponent( repo_name ) },
+				selectspecific: { _process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "selectspecific_id", handler: selectspecific_click } },
+				selectall: { _process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "selectall_id", handler: selectall_click  } },
+				headscount: { _process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "headscount_id" } },
+				tagscount: { _process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "tagscount_id" } }
+			} } );
+			data._replicate.push( {  name: "refs", data: {
+				refstable: {
+						_process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "refstable_id" },
+						headshead: { _process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "headshead_id" } },
+						tagshead: { _process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "tagshead_id" } }
+				},
+				_process: setup_map_field, _process_arg: { repo_name: repo_name, id_field: "refs_id" }
+			} } );
+			chain.push( { sub: "get_ref_names", repo: repo_name, handler_arg: repo_name } );
+		}
+		document.body.appendChild( DomTemplate.apply( document.getElementById( "repolist" ), data ) );
+		GitBrowser.call_server( { handler: fill_refs, final_handler: GitBrowser.status_show, before_handler: fill_refs_status, chain: chain } );
+	} } );
+}
+//-->
+</script>
+<link rel="stylesheet" type="text/css" href="GitBrowser.css"></link>
+<style type="text/css">
+.titletable td { padding: 0.5em 2em; }
+.title { font-size: 12px; font-weight: bold; color: #337; }
+.selectedtext { color: #337; }
+.repolist { padding-left: 1em; }
+.repo { background-color: #f6f6ea; }
+.repo .name { font-weight: bold; font-size: 12px; color: #330; }
+.repo td { padding: 5px 10px; border-top: 5px solid #fff; }
+.refs { border: 1px solid #e8e8d8; }
+.refs th { text-align: left; color: #787878; }
+.refs td { padding: 3px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<table class="titletable"><tr>
+<td class="title">Select repositories to browse</td>
+<td><span id="selected_text" class="selectedtext"></span></td>
+<td><a id="browseselected" class="linkbutton" style="visibility: hidden;">browse&nbsp;selected</a></td>
+<td>&nbsp;&nbsp;<a href="/">home</a></td>
+</tr></table>
+
+<div style="display:none;">
+
+<table id="repolist" class="repolist" cellspacing="0" cellpadding="0">
+
+<tr id="repo" class="repo">
+<td width="150px"><span id="reponame" class="name"></span></td>
+<td><a id="browseurl" class="linkbutton">browse all heads</a></td>
+<td><input id="selectall" type="checkbox" /> select all heads</td>
+<td><span id="headscount"></span><span id="tagscount"></span></td>
+<td><a id="selectspecific" class="button" style="visibility: hidden;" href="#">choose heads and tags</a></td>
+</tr>
+
+<tr id="refs" style="display:none;">
+<td colspan="5" class="refs">
+<table id="refstable" width="100%">
+<thead><tr><th id="headshead" style="visibility: hidden;">heads</th><th id="tagshead" style="visibility: hidden;">tags</th></tr></thead>
+<tr id="refsrow">
+<td><input type="checkbox" id="selecthead" /><span id="headname"></span></td>
+<td><input type="checkbox" id="selecttag" /><span id="tagname"></span></td>
+</tr>
+</table>
+</td>
+</tr>
+
+</table>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>test for Diagram.draw</title>
+<script type="text/javascript" src="../js.lib/Motion.js"></script>
+<script type="text/javascript" src="../js.lib/DomTemplate.js"></script>
+<script type="text/javascript" src="../js.lib/InvisibleRequest.js"></script>
+<script type="text/javascript" src="../GitBrowser.js"></script>
+<script type="text/javascript" src="../js.lib/wz_jsgraphics.js"></script>
+<script type="text/javascript" src="../GitDiagram.js"></script>
+<script type="text/javascript" src="make-sample-trees.js"></script>
+<script type="text/javascript">
+<!--
+
+function xdp( msg )
+{
+	var output=document.getElementById( "output" );
+	output.appendChild( document.createElement( "DIV" ) ).appendChild( document.createTextNode( msg ) );
+}
+
+/*
+function get_diagram_horizontal_lines( diagram_div )
+{
+	var lines=[];
+	for( var node=diagram_div.firstChild; node!=null; node=node.nextSibling ) {
+		if( div._gitbrowser_diagram_node_kind=="line" ) {
+			lines.push( { left: node.style.left, top: node.style.top, width: node.clientWidth } );
+		}
+	}
+	return lines;
+}
+*/
+/*
+function test_draw( t )
+{
+	t.plan( 6 );
+	t.open_window( "test-diagram-draw.html", function( wnd ) {
+		t.delay_call( 3, function() {
+
+			var diagram1_div=wnd.document.getElementById( "diagram1" );
+			diagram1_div.style.width="400px";
+
+			var diagram=new GitBrowser.Diagram( diagram1_div );
+			make_sample_tree1( diagram );
+			make_sample_tree1a( diagram );
+			diagram.place_nodes();
+			diagram.draw();
+
+
+			t.eq( diagram.m_canvas.childNodes.length, 2, "diagram div child nodes length" );
+			t.eq( get_diagram_horizontal_lines( diagram.m_canvas ), [ { left: "7px", top: "2px", width: 56 }, { left: "74px", top: "16px", width: 0 } ], "diagram horizontal lines" );
+
+			diagram.m_window_offset={ x: 20, y: -300 };
+			diagram.draw();
+			t.eq( diagram1_div.childNodes.length, 7, "diagram with offset div child nodes length" );
+			t.eq( get_diagram_horizontal_lines( diagram1_div ), [
+				{ left: "2px", top: "260px", width: 19 }, { left: "12px", top: "246px", width: 8 }, { left: "2px", top: "302px", width: 41 },
+				{ left: "15px", top: "232px", width: 5 }, { left: "24px", top: "288px", width: 8 }, { left: "26px", top: "274px", width: 5 }, { left: "54px", top: "316px", width: 0 }
+				], "diagram with offset horizontal lines"
+			);
+
+			diagram.clear();
+			make_sample_tree2( diagram );
+			diagram.place_nodes();
+			diagram.m_window_offset={ x: -100, y: -300 };
+			diagram.draw();
+
+			t.eq( diagram1_div.childNodes.length, 8, "diagram 2 div child nodes length" );
+			t.eq( get_diagram_horizontal_lines( diagram1_div ), [
+				{ left: "107px", top: "302px", width: 109 }, { left: "194px", top: "288px", width: 0 }, { left: "183px", top: "316px", width: 0 }, { left: "160px", top: "288px", width: 8 },
+				{ left: "146px", top: "288px", width: 0 }, { left: "132px", top: "288px", width: 0 }, { left: "113px", top: "274px", width: 92 }, { left: "116px", top: "260px", width: 2 }
+				], "diagram2 horizontal lines"
+			);
+		} );
+	} );
+}
+*/
+diagram1=null;
+diagram2=null;
+
+function init()
+{
+	if( diagram1==null ) {
+		diagram1=new GitDiagram( document.getElementById( "diagram1" ) );
+	}
+	if( diagram2==null ) {
+		diagram2=new GitDiagram( document.getElementById( "diagram2" ) );
+	}
+}
+function draw1a()
+{
+	init();
+	diagram1.clear();
+	make_sample_tree1( diagram1 );
+	make_sample_tree1a( diagram1 );
+	diagram1.m_window_offset={ x: 20, y: -300 };
+	diagram1.place_nodes();
+	diagram1.draw();
+}
+function draw1b()
+{
+	init();
+	diagram1.clear();
+	make_sample_tree2( diagram1 );
+	make_sample_tree2a( diagram1 );
+	make_sample_tree2b( diagram1 );
+	diagram1.m_window_offset={ x: -100, y: -300 };
+	diagram1.place_nodes();
+	diagram1.draw();
+}
+function draw_repo( diagram_name, repo_name, n )
+{
+	init();
+	var diagram=null;
+	if( diagram_name==diagram1.m_container_element.id ) {
+		diagram=diagram1;
+	}
+	if( diagram_name==diagram2.m_container_element.id ) {
+		diagram=diagram2;
+	}
+	if( diagram==null ) {
+		alert( "bad diagram name: "+diagram_name );
+		return;
+	}
+	diagram.clear();
+	GitBrowser._g_server_url="http://localhost/git-browser/git-browser.pl"; // this file is in not in the same directory as git-browser.pl, and InvisibleRequest does not do relative paths.
+	GitBrowser.call_server( { repo: repo_name, sub: "commits_from_refs", sub_args: { ref: ["r,all"] }, handler: function( result, repo_name ) {
+			// sort it to make the shape deterministic.
+			var tmp=[];
+			for( var commit_id in result.commits ) {
+				tmp.push( commit_id );
+			}
+			tmp.sort();
+			for( var tmp_i=0; tmp_i<tmp.length; ++tmp_i ) {
+				var commit=result.commits[tmp[tmp_i]];
+				var time= commit.epoch==null ? commit.committer_epoch : commit.epoch;
+				time=time*1000;
+				diagram.add_node( commit.id, time, time, commit.author, commit.comment, commit.parents, repo_name );
+			}
+			diagram.place_nodes();
+			diagram.draw();
+	} } );
+}
+
+function draw_bug_1()
+{
+	init();
+	diagram1.clear();
+	make_bug_tree_1( diagram1 );
+	diagram1.place_nodes();
+	diagram1.draw();
+}
+
+//-->
+</script>
+<style type="text/css">
+* { padding: 0; margin: 0 }
+#diagram1 { position:absolute; left: 300px; top: 30px; width: 50%; height: 250px; border: 1px solid #090; }
+#diagram2 { width: 80%; height: 250px; border: 1px solid #090; margin-top: 310px; margin-left: 5em; margin-right: 5em; }
+.angle { position: absolute; left: 60px ; top: 450px; border-left: 20px solid #fff; border-bottom: 150px solid #ee8; }
+.angleline { position: absolute; left: 59px; top: 450px; border-left: 20px solid #fff; border-bottom: 150px solid #000; }
+</style>
+</head>
+<body>
+<input type="button" value="draw1 a" onclick="draw1a();" />
+<input type="button" value="draw1 b" onclick="draw1b();" />
+<input type="button" value="draw bug 1" onclick="draw_bug_1();"/>
+<input type="button" value="draw 1 test" onclick="draw_repo( 'diagram1', 'test', 1000 );" />
+<input type="button" value="draw 1 git" onclick="draw_repo( 'diagram1', 'git', 100 );" />
+<div id="diagram1"></div>
+<div id="diagram2"></div>
+<input type="button" value="draw 2 test" onclick="draw_repo( 'diagram2', 'test', 1000 );" />
+<input type="button" value="draw 2 git" onclick="draw_repo( 'diagram2', 'git', 100 );" />
+<div id="output" style="width: 80%; margin-left: 20%" ></div>
+<div id="angleline" class="angleline" style="display: none;"></div>
+<div id="angle" class="angle" style="display: none;"></div>
+</body>

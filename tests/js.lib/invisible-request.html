@@ -1,0 +1,256 @@
+<html>
+<head>
+<script type="text/javascript" src="../../js.lib/InvisibleRequest.js"></script>
+<script type="text/javascript">
+<!--
+
+function print_msg( msg )
+{
+	var output=document.getElementById( "output" );
+	var s=document.createElement( "DIV" );
+	s.appendChild( document.createTextNode( msg ) );
+	output.appendChild( s );
+}
+
+function h( doc )
+{
+	print_msg( "OK: "+doc.result );
+}
+
+function error_h( msg )
+{
+	print_msg( "ERROR: "+msg );
+}
+
+function button_0()
+{
+	InvisibleRequest.get( { url: "invisible-response.pl",
+				handler: h,
+				error_handler: error_h
+			} );
+	InvisibleRequest.get( { url: "http://localhost/git-browser/tests/utility/no-file.html",  // depending on server, this will either return 404 (apache) or time out ?
+				handler: h,
+				error_handler: error_h
+			} );
+	InvisibleRequest.get( { url: "http://localhost/git-browser/tests/utility/invisible-response.pl?sleep=1",
+				handler: h,
+				error_handler: error_h
+			} );
+	InvisibleRequest.get( { url: "http://localhost/git-browser/tests/utility/invisible-response.pl?sleep=16",
+				handler: h,
+				error_handler: error_h
+			} );
+}
+
+function test_one( s )
+{
+	s.plan( 9 );
+	s.wait_result( 20 );
+	InvisibleRequest.set_default_timeout( 2 );
+	InvisibleRequest.get( { url: "invisible-response.pl",
+				handler: function( doc ) { s.ok( doc.result=="ok", "first call" ); },
+				error_handler: function( msg ) { s.fail( "1 "+msg ); }
+			} );
+	InvisibleRequest.get( { url: "http://localhost/git-browser/tests/utility/no-file.html",  // depending on server, this will either return 404 (apache) or time out ?
+				handler: function( doc ) { s.ok( doc.result==null, "should be 404 a document" ); },
+				error_handler: function( msg ) { s.ok( true, "2 "+msg ); }
+			} );
+	InvisibleRequest.get( { url: "http://localhost/git-browser/tests/utility/invisible-response.pl?sleep=1",
+				handler: function( doc, arg ) { s.ok( doc.result=="ok", "third call" ); s.eq( {a:"zz", r: 3 }, arg, "3. handler arg" ); },
+				error_handler: function( msg ) { s.fail( "3 "+msg ); },
+				handler_arg: {a:"zz", r: 3 }
+			} );
+	InvisibleRequest.get( { url: "http://localhost/git-browser/tests/utility/invisible-response.pl?sleep=16",
+				handler: function( doc ) { s.fail( "5. unreachable" ); },
+				error_handler: function( msg ) { s.ok( true, "fourth call: "+msg ); }
+			} );
+	InvisibleRequest.get( { url: "http://no-such-host/junk.html",
+				handler: function( doc ) { s.fail( "6. unreachable" ); },
+				error_handler: function( msg ) { s.ok( true, "fifth call: "+msg ); }
+			} );
+	InvisibleRequest.get( { url: "http://localhost/git-browser/tests/utility/invisible-response.pl",
+				handler: function( doc ) { s.ok( doc.result=="ok", "sixth call - after a sleep" ); },
+				error_handler: function( msg ) { s.fail( "6 "+msg ); }
+			} );
+	InvisibleRequest.get( { url: "http://localhost/git-browser/tests/utility/invisible-response.pl?sleep=6",
+				handler: function( doc, arg ) { s.fail( "7. unreachable" ); },
+				error_handler: function( msg ) { s.ok( true, "7. timed out" ); }
+			} );
+	InvisibleRequest.get( { url: "http://localhost/git-browser/tests/utility/invisible-response.pl?sleep=6",
+				handler: function( doc, arg ) { s.eq( "ok", doc.result, "8. after increased timeout " ); },
+				error_handler: function( msg ) { s.fail( "8. fail: "+msg ); },
+				timeout_seconds: 15
+			} );
+}
+
+function print( node )
+{
+	var output=document.getElementById( "output" );
+	var s=document.createElement( "DIV" );
+	s.appendChild( node.cloneNode( true ) ); // mozilla lacks outerHTML, extraneous  wrap/unwrap is necessary
+	var str=s.innerHTML;
+	s.innerHTML="";
+	s.appendChild( document.createTextNode( str ) );
+	output.appendChild( s );
+	output.appendChild( node );
+}
+
+function on_node( node )
+{
+	print( node.cloneNode( true ) ); // if not cloneNode, each node will be inserted only once
+}
+
+function on_error( msg )
+{
+	var output=document.getElementById( "output" );
+	output.innerHTML=msg;
+}
+
+function button_1()
+{
+	InvisibleRequest.set_default_timeout( 2 );
+	InvisibleRequest.get_element( { url: "invisible-elements-a.html", element_id: "template", handler: on_node, error_handler: on_error } );
+	InvisibleRequest.get_element( { url: "invisible-elements-b.html", element_id: "template", handler: on_node, error_handler: on_error } );
+	InvisibleRequest.get_element( { url: "invisible-elements-a.html", element_id: "template2", handler: on_node, error_handler: on_error } );
+	InvisibleRequest.get_element( { url: "invisible-elements-a.html", element_id: "template", handler: on_node, error_handler: on_error } );
+	InvisibleRequest.get_element( { url: "invisible-elements-b.html", element_id: "template", handler: on_node, error_handler: on_error } );
+
+	setTimeout( function() { print( document.getElementById( "template" ) ) }, 8000 ); // beware! it prints the first node that appears in the document with this id,
+														//even if this node was added to the document later...
+}
+
+var sequence=[];
+function test_element_1( t )
+{
+	t.plan( 10 );
+	var answer1="<ul id=\"template\"><li id=\"item\">item </li></ul>";
+	var answer2="<p id=\"template\">paragraph text </p>";
+	var answer3="<a id=\"template2\" href=\"template%202\">a link </a>"; // strange things happen when browser 'normalizes' urls
+	var answer4=answer1;
+	var answer5=answer2;
+
+	InvisibleRequest.set_default_timeout( 5 );
+
+	InvisibleRequest.get_element( { 	url: "invisible-elements-a.html",
+						element_id: "template",
+						handler: function( node ) { t.html_eq( node, answer1, "elements at once 1" ); sequence.push( 1 ); },
+						error_handler: function( msg ) { t.fail( "elements at once 1 "+msg ); }
+					} );
+	InvisibleRequest.get_element( {	url: "invisible-elements-b.html",
+						element_id: "template",
+						handler: function( node ) { t.html_eq( node, answer2, "elements at once 2" ); sequence.push( 2 ); },
+						error_handler: function( msg ) { t.fail( "elements at once 2 "+msg ); }
+					} );
+	InvisibleRequest.get_element( {	url: "invisible-elements-a.html",
+						element_id: "template2",
+						handler: function( node, arg ) { t.html_eq( node, answer3, "elements at once 3" ); sequence.push( 3 ); t.eq( arg, "goo", "3. handler arg" ); },
+						error_handler: function( msg ) { t.fail( "elements at once 3 "+msg ); },
+						handler_arg: "goo"
+					} );
+	InvisibleRequest.get_element( {	url: "invisible-elements-a.html",
+						element_id: "template",
+						handler: function( node ) { t.html_eq( node, answer4, "elements at once 4" ); sequence.push( 4 ); },
+						error_handler: function( msg ) { t.fail( "elements at once 4 "+msg ); }
+					} );
+	InvisibleRequest.get_element( { 	url: "invisible-elements-b.html",
+						element_id: "template",
+						handler: function( node ) { t.html_eq( node, answer5, "elements at once 5" ); sequence.push( 5 ); },
+						error_handler: function( msg ) { t.fail( "elements at once 5 "+msg ); }
+					} );
+	InvisibleRequest.get_element( { 	url: "invisible-elements-a.html",
+						element_id: "zz",
+						handler: function( node ) { t.fail( "elements at once 6: unreachable" ); },
+						error_handler: function( msg ) { t.like( msg, /requested element with id zz is not found in the document invisible-elements-a\.html/, "elements at once 6" ); }
+					} );
+	InvisibleRequest.get_element( {	url: "zz",
+						element_id: "qq",
+						handler: function( node ) { t.fail( "elements at once 7: unreachable" ); },
+						// either timeout or 404, depends on the server
+						error_handler: function( msg ) { t.like( msg, /(InvisibleRequest.get: timeout requesting .*zz)|(requested element with id qq is not found)/, "elements at once 7" ); }
+					} );
+
+	t.delay_call( 20,
+		function() {
+			t.eq( sequence, [1,3,4,2,5], "sequence" );
+			t.eq( document.getElementById( "template" ).nodeName, "Q", "multiple ids" );
+		}
+	);
+
+}
+
+function test_element_2( t )
+{
+	t.plan( 8 );
+	// check that previous tests have finished
+	var cached=[];
+	for( var x in InvisibleRequest._g_element_cache ) {
+		if( x.match( /html$/ ) ) { // skip spurious entries from 404 documents
+			cached.push( x );
+		}
+	}
+	cached.sort();
+	t.eq( cached, ["invisible-elements-a.html", "invisible-elements-b.html"], "elements sequenced: previous test finished" );
+	// make them reload again
+	InvisibleRequest._g_element_cache={};
+	sequence=[];
+
+	var answer1="<ul id=\"template\"><li id=\"item\">item </li></ul>";
+	var answer2="<p id=\"template\">paragraph text </p>";
+	var answer3="<a id=\"template2\" href=\"template%202\">a link </a>"; // strange things happen when browser 'normalizes' urls
+	var answer4=answer1;
+	var answer5=answer2;
+
+	t.delay_call( 1,
+	  function() {
+		InvisibleRequest.get_element( { url: "invisible-elements-a.html",
+						element_id: "template",
+						handler: function( node ) { t.html_eq( node, answer1, "elements at once 1" ); sequence.push( 1 ); },
+						error_handler: function( msg ) { t.fail( "elements at once 1 "+msg ); }
+						} );
+	  }, function() {
+		InvisibleRequest.get_element( { url: "invisible-elements-b.html",
+						element_id: "template",
+						handler: function( node ) { t.html_eq( node, answer2, "elements at once 2" ); sequence.push( 2 ); },
+						error_handler: function( msg ) { t.fail( "elements at once 2 "+msg ); }
+						} );
+	  }, function() {
+		InvisibleRequest.get_element( { url: "invisible-elements-a.html",
+						element_id: "template2",
+						handler: function( node ) { t.html_eq( node, answer3, "elements at once 3" ); sequence.push( 3 ); },
+						error_handler: function( msg ) { t.fail( "elements at once 3 "+msg ); }
+						} );
+	  }, function() {
+		InvisibleRequest.get_element( { url: "invisible-elements-a.html",
+						element_id: "template",
+						handler: function( node ) { t.html_eq( node, answer4, "elements at once 4" ); sequence.push( 4 ); },
+						error_handler: function( msg ) { t.fail( "elements at once 4 "+msg ); }
+						} );
+	  }, function() {
+		InvisibleRequest.get_element( { url: "invisible-elements-b.html",
+						element_id: "template",
+						handler: function( node ) { t.html_eq( node, answer5, "elements at once 5" ); sequence.push( 5 ); },
+						error_handler: function( msg ) { t.fail( "elements at once 5 "+msg ); }
+						} );
+	  }, function() {
+		t.eq( sequence, [1,2,3,4,5], "sequence" );
+		t.eq( document.getElementById( "template" ).nodeName, "Q", "multiple ids" );
+	  }
+	);
+}
+
+// -->
+</script>
+</head>
+<body>
+
+<input type="text" id="input"/>
+<input type="button" id="button0" value="test" onclick="button_0();" />
+<input type="button" id="button1" value="test element" onclick="button_1();" />
+<br />
+
+<div id="output"></div>
+
+<q id="template">element for checking for multiple ids</q>
+
+</body>
+</html>

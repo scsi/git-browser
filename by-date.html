@@ -1,0 +1,707 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>git browser</title>
+<!--
+Copyright (C) 2005, Artem Khodush <greenkaa@gmail.com>
+
+This file is licensed under the GNU General Public License version 2.
+-->
+<script type="text/javascript" src="js.lib/DomTemplate.js"></script>
+<script type="text/javascript" src="js.lib/InvisibleRequest.js"></script>
+<script type="text/javascript" src="js.lib/Motion.js"></script>
+<script type="text/javascript" src="js.lib/wz_jsgraphics.js"></script>
+<script type="text/javascript" src="GitBrowser.js"></script>
+<script type="text/javascript" src="GitDiagram.js"></script>
+<script type="text/javascript">
+<!--
+
+g_diagram=null;
+
+format_popup_date=function( node )
+{
+	var date_str="";
+	if( node.time!=null ) {
+		var dt=new Date( node.time );
+		var date=dt.getDate();
+		var month=GitDiagram._g_month_names[dt.getMonth()];
+		var year=dt.getFullYear();
+		var hour=dt.getHours();
+		var minute=dt.getMinutes();
+		minute= minute<10 ? "0"+minute : minute;
+		date_str=month+" "+date+" "+year+" "+hour+":"+minute
+	}
+	return date_str;
+}
+
+// diagram ui events
+on_drag_mouse_down=function( e, diagram )
+{
+	// browsers ignore setting move cursor here
+}
+on_drag_mouse_up=function( e, diagram, offset )
+{
+	document.body.style.cursor="default";
+	diagram.end_move( offset );
+}
+on_drag_mouse_move=function( e, diagram, offset, first )
+{
+	if( first ) {
+		release_popups();
+		document.body.style.cursor="move";
+		diagram.begin_move();
+	}
+	diagram.track_move( offset );
+}
+
+process_date_column_stat=function( date_column, stat )
+{
+	for( var i=0; i<date_column.lines.length; ++i ) {
+		var node=date_column.lines[i];
+		if( stat.min_y==null || stat.min_y>node.absolute_y ) {
+			stat.min_y=node.absolute_y;
+		}
+		if( stat.max_y==null || stat.max_y<node.absolute_y ) {
+			stat.max_y=node.absolute_y;
+		}
+	}
+	if( stat.max_count==null || stat.max_count<date_column.lines.length ) {
+		stat.max_count=date_column.lines.length;
+	}
+}
+
+//tstart=null;
+on_draw=function( diagram, phase )
+{
+	if( phase=="begin" ) {
+//		tstart=(new Date()).getTime();
+		GitBrowser.status_show( "drawing..." );
+		document.body.style.cursor="wait";
+		release_popups();
+		Motion.cancel_drag( diagram.m_container_element );
+	}else if( phase=="end" ) {
+		GitBrowser.status_show();
+		if( g_selected_nodes["diff"].highlight_node!=null ) {
+			diagram.select_node( g_selected_nodes["diff"].highlight_node.id, g_selected_nodes["diff"].color );
+		}
+		if( g_selected_nodes["pin"].highlight_node!=null ) {
+			diagram.select_node( g_selected_nodes["pin"].highlight_node.id, g_selected_nodes["pin"].color );
+		}
+		document.body.style.cursor="";
+		// dragging
+		Motion.track_drag( {
+			node: diagram.m_container_element,
+			down_handler: on_drag_mouse_down,
+			up_handler: on_drag_mouse_up,
+			move_handler: on_drag_mouse_move,
+			handler_arg: diagram
+		} );
+
+/*
+		var tstop=(new Date()).getTime();
+		var d=g_diagram.m_container_element;
+		var c=d.firstChild;
+		var cc=c.lastChild;
+		var s="drawing time: "+((tstop-tstart)/1000)+" body children: "+document.body.childNodes.length+" diagram children: "+d.childNodes.length+" canvas children: "+c.childNodes.length+" subcanvas children: "+cc.childNodes.length;
+		s+=" track_leave bind count: "+Motion._g_enter_leave_binder.m_objects.length;
+		xdp( s );
+*/
+	}
+}
+on_place=function( diagram, phase )
+{
+	if( phase=="begin" ) {
+		GitBrowser.status_show( "placing..." );
+		document.body.style.cursor="wait";
+//		tstart=(new Date()).getTime();
+	}else if( phase=="end" ) {
+		document.body.style.cursor="";
+		GitBrowser.status_show();
+
+		// date column stat
+		var stat={};
+		for( var i=0; i<diagram.m_date_columns.length; ++i ) {
+			process_date_column_stat( diagram.m_date_columns[i], stat );
+		}
+//		xdp( "span "+(stat.max_y-stat.min_y)+" max count "+stat.max_count );
+
+/*
+		var tstop=(new Date()).getTime();
+		var s="placing time: "+((tstop-tstart)/1000)+" nodes: "+diagram.m_node_count+" unloaded nodes: "+diagram.m_start_more_ids.length;
+		xdp( s );
+*/
+	}
+}
+on_node_init=function( diagram, node, node_div )
+{
+	if( node.popup_id==null ) {
+		var popup_nodes= node.coalesced_nodes==null ? [node] : node.coalesced_nodes;
+		node.popup_id=Motion.attach_popup( { trigger_node: node_div, anchor_offset: 4, side: "right", side_align: "top",
+									popup_filler: popup_filler, filler_arg: { diagram: diagram, nodes: popup_nodes }, on_show: popup_on_show,
+									delay_show_seconds: 0.3//, transparent: true
+		} );
+		g_track_popups.push( node_div );
+	}else {
+		Motion.attach_same_popup( node.popup_id, node_div );
+	}
+}
+// diagram node highlight
+g_selected_nodes={
+	"popup_track": { node: null, color: "#ffe000", highlight_node: null },
+	"diff" : { node: null, color: "#44f088", highlight_node: null },
+	"pin" : { node: null, color: "#44a0ff", highlight_node: null }
+};
+select_node=function( select_kind, node, highlight_node )
+{
+	var prev_highlight=g_selected_nodes[select_kind].highlight_node;
+	g_selected_nodes[select_kind].node=node;
+	g_selected_nodes[select_kind].highlight_node=highlight_node;
+	if( highlight_node!=null ) {
+		g_diagram.select_node( highlight_node.id, g_selected_nodes[select_kind].color );
+	}
+	if( prev_highlight!=null ) {
+		var prev_color=null;
+		var order=["diff", "pin", "popup_track"];
+		for( var i=0; i<order.length; ++i ) {
+			if( order[i]!=select_kind && g_selected_nodes[order[i]].highlight_node==prev_highlight ) {
+				prev_color=g_selected_nodes[order[i]].color;
+			}
+		}
+		g_diagram.select_node( prev_highlight.id, prev_color );
+	}
+}
+
+// splitter
+g_diff_pane_pos={ x: 0, y: 0 };
+g_diff_pane_size={ x: 0, y: 0 };
+update_diffview_height=function()
+{
+	var diffheaddiff=document.getElementById( "diffheaddiff" );
+	var diff_height=0;
+	if( diffheaddiff.style.display!="none" ) {
+		var diff_comment=document.getElementById( diffheaddiff._gitbrowser_comment_id );
+		if( diff_comment!=null ) {
+			diff_comment.style.color="#000";
+			if( diff_comment.scrollHeight>g_max_diff_comment_height ) {
+				diff_comment.style.height=g_max_diff_comment_height+"px";
+			}
+		}
+		diff_height=diffheaddiff.clientHeight;
+	}
+	var diffheadpin=document.getElementById( "diffheadpin" );
+	var pin_height=0;
+	if( diffheadpin.style.dislpay!="none" ) {
+		var pin_comment=document.getElementById( diffheadpin._gitbrowser_comment_id );
+		if( pin_comment!=null ) {
+			pin_comment.style.color="#787878";
+			if( pin_comment.scrollHeight>g_max_diff_comment_height ) {
+				pin_comment.style.height=g_max_diff_comment_height+"px";
+			}
+		}
+		pin_height=diffheadpin.clientHeight;
+	}
+	var diffhead_height=Math.max( diff_height, pin_height );
+	diffhead_height+=8;
+	var diffview=document.getElementById( "diffview" );
+	Motion.set_page_coords( diffview, g_diff_pane_pos.x, g_diff_pane_pos.y+diffhead_height );
+	diffview.style.width=(g_diff_pane_size.x-4)+"px";
+	diffview.style.height=(g_diff_pane_size.y-diffhead_height)+"px";
+}
+on_splitter_resize=function( arg, title_div )
+{
+	var diagram_div=document.getElementById( "diagram" );
+	var title_height=title_div.clientHeight;
+	Motion.set_page_coords( diagram_div, arg.half1_pos.x, arg.half1_pos.y+title_height );
+	diagram_div.style.width=(arg.half1_wh.x-4)+"px";
+	diagram_div.style.height=(arg.half1_wh.y-title_height)+"px";
+
+	g_diff_pane_pos=arg.half2_pos;
+	g_diff_pane_size=arg.half2_wh;
+	update_diffview_height();
+	g_diagram.draw();
+}
+
+// diff pane
+clear_pin_and_diff=function()
+{
+	select_node( "pin", null, null );
+	select_node( "diff", null, null );
+	document.getElementById( "diffheaddiff" ).innerHTML="";
+	document.getElementById( "diffheadpin" ).innerHTML="";
+	document.getElementById( "differror" ).style.display="none";
+	document.getElementById( "diffview" ).style.display="none";
+	document.getElementById( "diffview" ).src="";
+}
+g_max_diff_comment_height=50;
+update_diff_title=function( which, node )
+{
+	var highlight_node=node.coalesced_to==null ? node : node.coalesced_to;
+	select_node( which, node, highlight_node );
+	var title_dest=document.getElementById( "diffhead"+which );
+	title_dest.innerHTML="";
+	var data={
+		date: format_popup_date( node ),
+		author: node.author,
+		comment:  {
+			_text: node.comment,
+			_process: function( n, arg ) {
+				arg.dest._gitbrowser_comment_id=n.id;
+			},
+			_process_arg: { dest: title_dest }
+		},
+		clear: which=="diff" ? null : { _process: function( n, arg ) { n.onclick=clear_pin_and_diff; } },
+		bullet: which=="diff" ? null : { _process: function( n, arg ) { n.style.border=arg==null ? "" : "2px solid "+arg; }, _process_arg: g_selected_nodes[which].color }
+	};
+	DomTemplate.apply( document.getElementById( "difftitle" ), data, title_dest );
+	var other=which=="diff" ? "pin" : "diff";
+	var other_node=g_selected_nodes[other].node;
+	var other_title=document.getElementById( "diffhead"+other );
+	if( other_node==null ) {
+		other_title.style.display="none";
+		title_dest.style.width="100%";
+		title_dest.style.styleFloat="";
+		title_dest.style.cssFloat="";
+		title_dest.style.display="";
+		var comment=document.getElementById( title_dest._gitbrowser_comment_id );
+		if( comment!=null ) {
+			comment.style.color="#000";
+			if( comment.clientHeight>g_max_diff_comment_height ) {
+				comment.style.height=g_max_diff_comment_height+"px";
+			}
+		}
+	}else {
+		var left_title=title_dest;
+		var right_title=other_title;
+		if( other_node.time<node.time ) {
+			left_title=other_title;
+			right_title=title_dest;
+		}
+		left_title.style.width="49%";
+		left_title.style.styleFloat="left";
+		left_title.style.cssFloat="left";
+		right_title.style.width="49%";
+		right_title.style.styleFloat="right";
+		right_title.style.cssFloat="right";
+		left_title.style.display="";
+		right_title.style.display="";
+
+	}
+}
+do_diff=function()
+{
+	var right_diff_node=g_selected_nodes["diff"].node;
+	var left_diff_node=g_selected_nodes["pin"].node;
+	if( right_diff_node!=null ) {
+		if( left_diff_node==null ) {
+			left_diff_node=right_diff_node.parents[0];
+		}else {
+			if( left_diff_node.time>right_diff_node.time ) {
+				var t=left_diff_node;
+				left_diff_node=right_diff_node;
+				right_diff_node=t;
+			}
+		}
+		if( left_diff_node!=null ) {
+			var msg=null;
+			if( left_diff_node==right_diff_node ) {
+				msg="can't diff the node with itself";
+			}
+			// find repo both nodes belong to
+			var common_repo=null;
+			if( msg==null ) {
+				for( var left_i=0; left_i<left_diff_node.repos.length; ++left_i ) {
+					for( var right_i=0; right_i<right_diff_node.repos.length; ++right_i ) {
+						if( left_diff_node.repos[left_i]==right_diff_node.repos[right_i] ) {
+							common_repo=left_diff_node.repos[left_i];
+						}
+					}
+				}
+				if( common_repo==null ) {
+					msg="can't diff nodes from different repositories: left from "+left_diff_node.repos.join( "," )+"; right from "+right_diff_node.repos.join( "," );
+				}
+			}
+			if( msg!=null ) {
+				var differror=document.getElementById( "differror" );
+				differror.style.display="";
+				differror.innerHTML="";
+				differror.appendChild( document.createTextNode( msg ) );
+				document.getElementById( "diffview" ).style.display="none";
+			}else {
+				document.getElementById( "differror" ).style.display="none";
+				document.getElementById( "diffview" ).style.display="";
+				document.getElementById( "diffloader" ).src="git-diff.pl?repo="+common_repo+"&id1="+left_diff_node.id+"&id2="+right_diff_node.id;
+			}
+		}
+		update_diffview_height();
+	}
+}
+diff_iframe_onload=function()
+{
+	document.getElementById( "diffview" ).innerHTML=window.frames.diffloader.document.body.innerHTML;
+}
+on_pin=function()
+{
+	if( this._gitbrowser_diagram_id!=null && this._gitbrowser_node_id!=null ) {
+		var node=g_diagram.m_nodes[this._gitbrowser_node_id];
+		if( node!=null ) {
+			clear_pin_and_diff();
+			update_diff_title( "pin", node );
+			var pn=find_popup_node_div( this );
+			if( pn!=null ) {
+				var popup=pn.parentNode;
+				update_popup( popup );
+			}
+		}
+	}
+}
+on_diff=function()
+{
+	if( this._gitbrowser_diagram_id!=null && this._gitbrowser_node_id!=null ) {
+		var node=g_diagram.m_nodes[this._gitbrowser_node_id];
+		if( node!=null ) {
+			update_diff_title( "diff", node );
+			do_diff();
+		}
+	}
+}
+
+// popups
+g_track_popups=[];
+g_track_enter_leave=[];
+release_popups=function()
+{
+	var i;
+	for( i=0; i<g_track_popups.length; ++i ) {
+		Motion.detach_popup( g_track_popups[i] );
+	}
+	g_track_popups=[];
+	for( i=0; i<g_track_enter_leave.length; ++i ) {
+		Motion.cancel_enter_leave( g_track_enter_leave[i] );
+	}
+	g_track_enter_leave=[];
+	for( i in g_diagram.m_nodes ) {
+		g_diagram.m_nodes[i].popup_id=null;
+	}
+}
+popup_enter=function( popup, arg )
+{
+	var node=arg.diagram.m_nodes[arg.node_id];
+	var highlight_node=node.coalesced_to!=null ? node.coalesced_to : node;
+	select_node( "popup_track", node, highlight_node );
+}
+popup_leave=function( popup, arg )
+{
+	select_node( "popup_track", null, null );
+}
+find_popup_node_div=function( btn )
+{
+	var pn=btn.parentNode;
+	while( pn!=null ) {
+		if( pn.id!=null && pn.id.match( "^node" ) ) {
+			break;
+		}
+		pn=pn.parentNode;
+	}
+	return pn;
+}
+remember_button_id=function( btn, tag )
+{
+	var pn=find_popup_node_div( btn );
+	if( pn!=null ) {
+		pn[tag]=btn.id;
+	}
+}
+g_popup_max_width=220;
+popup_filler=function( popup, arg )
+{
+	var diagram=arg.diagram;
+	var nodes=arg.nodes;
+	popup.style.padding="2px";
+	var data={ node: [] };
+	for( var node_i=0; node_i<nodes.length; ++node_i ) {
+		var node=nodes[node_i];
+		var node_data;
+		if( node.author==null ) {
+			node_data={ not_loaded: {} };
+		}else {
+			node_data={
+				buttons: {
+					parents_btn: {
+						_process: function( n, arg ) {
+							Motion.attach_popup( { trigger_node: n, x_anchor_node: popup, y_anchor_node: n, anchor_offset: 1, side: "left", side_align: "top",
+											popup_filler: popup_filler, filler_arg: { diagram: diagram, nodes: arg }, on_show: popup_on_show,
+											delay_show_seconds: 0.3//, transparent: true
+										} );
+							g_track_popups.push( n );
+							remember_button_id( n, "_gitbrowser_popup_parents_button" );
+						},
+						_process_arg: node.parents
+					},
+					children_btn: {
+						_process: function( n, arg ) {
+							Motion.attach_popup( { trigger_node: n, x_anchor_node: popup,y_anchor_node: n, anchor_offset: 1, side: "right", side_align: "top",
+											popup_filler: popup_filler, filler_arg: { diagram: diagram, nodes: arg }, on_show: popup_on_show,
+											delay_show_seconds: 0.3//, transparent: true
+										} );
+							g_track_popups.push( n );
+							remember_button_id( n, "_gitbrowser_popup_children_button" );
+						},
+						_process_arg: node.children
+					},
+					diff_btn: node.date==null ? null : {
+						_process: function( n, arg ) {
+							n._gitbrowser_diagram_id=arg.diagram.m_diagram_id;
+							n._gitbrowser_node_id=arg.node.id;
+							n.onclick=on_diff;
+							remember_button_id( n, "_gitbrowser_popup_diff_button" );
+						},
+						_process_arg: { diagram: diagram, node: node }
+					},
+					pin_btn: node.date==null ? null : {
+						_process: function( n, arg ) {
+							n._gitbrowser_diagram_id=arg.diagram.m_diagram_id;
+							n._gitbrowser_node_id=arg.node.id;
+							n.onclick=on_pin;
+							remember_button_id( n, "_gitbrowser_popup_pin_button" );
+						},
+						_process_arg: { diagram: diagram, node: node }
+					}
+				},
+				date: format_popup_date( node ),
+				author: node.author==null ? "" : node.author,
+				comment: node.comment==null ? "" : node.comment,
+				_process: function( n, arg ) {
+					Motion.track_enter_leave( { node: n,
+						enter_handler: popup_enter, leave_handler: popup_leave, handler_arg: { diagram: arg.diagram, node_id: arg.node.id }
+					} );
+					g_track_enter_leave.push( n );
+					n._gitbrowser_node_is_root=arg.node.parents.length==0;
+					n._gitbrowser_node_is_leaf=arg.node.children.length==0;
+				},
+				_process_arg: { diagram: diagram, node: node }
+			};
+		}
+		data.node.push( node_data );
+	}
+	DomTemplate.apply( document.getElementById( "popuptemplate" ), data, popup );
+	// limit popup width
+	if( popup.clientWidth>=g_popup_max_width ) {
+		popup.style.width=g_popup_max_width+"px";
+	}
+	// stretch table with buttons to fill all popup width
+	for( var node_div=popup.firstChild; node_div!=null; node_div=node_div.nextSibling ) {
+		var table=node_div.firstChild;
+		if( table!=null ) {
+			table.width=(popup.clientWidth-8)+"px";
+		}
+	}
+}
+update_popup_node_div=function( cn, old_state, new_state )
+{
+	if( old_state==null ) { // do initialization for the first time only
+		var children_button=document.getElementById( cn._gitbrowser_popup_children_button );
+		children_button.style.visibility= cn._gitbrowser_node_is_leaf ? "hidden" : "";
+		var parents_button=document.getElementById( cn._gitbrowser_popup_parents_button );
+		parents_button.style.visibility= cn._gitbrowser_node_is_root ? "hidden" : "";
+	}
+	var diff_button=document.getElementById( cn._gitbrowser_popup_diff_button );
+	var pin_button=document.getElementById( cn._gitbrowser_popup_pin_button );
+	if( new_state=="normal" ) {
+		diff_button.innerHTML=" diff";
+		diff_button.style.visibility=cn._gitbrowser_node_is_root ? "hidden" : "";
+		pin_button.innerHTML="pin ";
+		pin_button.style.visibility="";
+	}else {
+		diff_button.innerHTML=" diff to pin";
+		diff_button.style.visibility= diff_button._gitbrowser_node_id==g_selected_nodes["pin"].node.id ? "hidden" : ""; // avoid diff with itself
+		pin_button.innerHTML="";
+		pin_button.style.visibility="hidden";
+	}
+}
+update_popup=function( popup )
+{
+	var pinned_node=g_selected_nodes["pin"].node;
+	var pinned_id=pinned_node==null ? null : pinned_node.id;
+	var new_state= pinned_node==null ? "normal" : "pinned";
+	var old_state=popup._gitbrowser_popup_state;
+	if( old_state!=new_state || popup._gitbrowser_pinned_id!=pinned_id ) {
+		popup._gitbrowser_popup_state=new_state;
+		popup._gitbrowser_pinned_id!=pinned_id;
+		for( var cn=popup.firstChild; cn!=null; cn=cn.nextSibling ) {
+			if( cn._gitbrowser_popup_diff_button!=null && cn._gitbrowser_popup_pin_button!=null && cn._gitbrowser_popup_children_button!=null && cn._gitbrowser_popup_parents_button!=null ) {
+				update_popup_node_div( cn, old_state, new_state );
+			}
+		}
+	}
+}
+popup_on_show=function( popup )
+{
+	update_popup( popup );
+}
+
+// global initialization, diagram loading
+place_and_draw=function( context, keep_window_offset )
+{
+	context.diagram.place_nodes( keep_window_offset );
+	context.diagram.draw();
+	GitBrowser.title_update( { diagram: context.diagram } );
+}
+on_title_loaded=function( context )
+{
+	Motion.make_splitter( { direction: "h", container: document.body, initial_split: 0.5,
+		contents1: [ context.title_div, context.diagram_div ],
+		contents2: [ document.getElementById( "diff" ) ],
+		resize_handler: on_splitter_resize,
+		resize_handler_arg: context.title_div,
+		move_handler: function( arg, first ) { if( first ) { context.diagram.m_container_element.innerHTML=""; } } // speed up splitter drag start
+	} );
+}
+
+g_ui_map={
+	"draw": on_draw,
+	"place": on_place,
+	"node_init": on_node_init
+};
+onload=function()
+{
+	var diagram_div=document.getElementById( "diagram" );
+	g_diagram=new GitDiagram( {
+		container_element: diagram_div,
+		style: "by-date",
+		ui_handler: GitBrowser.diagram_ui_handler,
+		ui_handler_arg: g_ui_map
+	}  );
+	GitBrowser.init( {
+		repos: GitBrowser.repos_decode_location( location ),
+		diagram_div: diagram_div, // diagram_div is a payload
+		diagram: g_diagram,
+		title_loaded_handler: on_title_loaded,
+		commits_first_loaded_handler: function( context ) {  place_and_draw( context, false ); },
+		commits_more_loaded_handler: function( context ) { place_and_draw( context, true ); }
+	} );
+}
+
+// debug output
+xdp=function( msg )
+{
+	var o=document.getElementById( "output" );
+	o.style.display="";
+	o.appendChild( document.createElement( "DIV" ) ).appendChild( document.createTextNode( msg ) );
+}
+
+//-->
+</script>
+<link rel="stylesheet" type="text/css" href="GitBrowser.css"></link>
+<style type="text/css">
+html { height: 99.8%; }
+body { height: 99.8%; font: normal normal 12px sans-serif; overflow: hidden; }
+
+#diagram { border: 1px solid #090; position: absolute; }
+
+.difftitle td { font-size: 12px; padding: 2px; }
+.difftitledate, .difftitleauthor { font-weight: bold; color: #7878b8; }
+.diffnodebullet { width: 6px; height: 6px; background-color: #330; font-size: 1px; }
+.diffcomment { overflow: auto; font-size: 12px; }
+.differror { font-size: 12px; color: #a82222; }
+
+#diffseparator { clear: both; width: 100%; margin: 3px 0 4px 0; border-bottom: 1px solid #a8a8a8; line-height:0; }
+
+.popupnode { color: #000; background-color: #f8fff8; border: 1px solid #7b7; font-family: sans-serif; font-size: 11px; padding-left: 2px; padding-right: 1px; margin-bottom: 2px; }
+.popupdate { margin-top: 3px; }
+.popupbutton { color: #000; background-color: #f4f4fc; border: 1px solid #a0a0ff; padding: 0; margin: 1px;  width: 50px; cursor: pointer; }
+.popupbutton:hover { border: 1px solid #4040ff; }
+.popuptrigger { color: #000; background-color: #e4f6e4; border: 1px solid #9e9; padding: 0; margin: 1px;  width: 50px; cursor: default; }
+.popupcomment { margin-top: 2px; padding-top: 4px; border-top: 1px solid #9e9; }
+
+#diffview { overflow: auto; }
+#diffview div.title_text { padding:6px 0px; border: solid #d9d8d1; border-width:0px 0px 1px; }
+#diffview div.log_body { padding:8px 8px 8px 150px; }
+#diffview span.age { position:relative; float:left; width:142px; font-style:italic; }
+#diffview div.log_link {
+	padding:0px 8px;
+	font-size:10px; font-family:sans-serif; font-style:normal;
+	position:relative; float:left; width:136px;
+}
+#diffview div.list_head { padding:6px 8px 4px; border:solid #d9d8d1; border-width:1px 0px 0px; font-style:italic; }
+#diffview a.list { text-decoration:none; color:#000000; }
+#diffview a.list:hover { text-decoration:underline; color:#880000; }
+#diffview a.text { text-decoration:none; color:#0000cc; }
+#diffview a.text:visited { text-decoration:none; color:#880000; }
+#diffview a.text:hover { text-decoration:underline; color:#880000; }
+#diffview table { padding:8px 4px; }
+#diffview th { padding:2px 5px; font-size:12px; text-align:left; }
+#diffview tr.light:hover { background-color:#edece6; }
+#diffview tr.dark { background-color:#f6f6f0; }
+#diffview tr.dark:hover { background-color:#edece6; }
+#diffview td { padding:2px 5px; font-size:12px; vertical-align:top; }
+#diffview td.link { padding:2px 5px; font-family:sans-serif; font-size:10px; }
+#diffview div.pre { font-family:monospace; font-size:12px; white-space:pre; }
+#diffview div.diff_info { font-family:monospace; color:#000099; background-color:#edece6; font-style:italic; }
+#diffview div.index_include { border:solid #d9d8d1; border-width:0px 0px 1px; padding:12px 8px; }
+#diffview div.search { margin:4px 8px; position:absolute; top:56px; right:12px }
+#diffview a.linenr { color:#999999; text-decoration:none }
+#diffview a.rss_logo {
+	float:right; padding:3px 0px; width:35px; line-height:10px;
+	border:1px solid; border-color:#fcc7a5 #7d3302 #3e1a01 #ff954e;
+	color:#ffffff; background-color:#ff6600;
+	font-weight:bold; font-family:sans-serif; font-size:10px;
+	text-align:center; text-decoration:none;
+}
+#diffview a.rss_logo:hover { background-color:#ee5500; }
+
+</style>
+</head>
+<body>
+
+<div id="diagram"></div>
+
+<div id="diff">
+
+<div id="diffheaddiff"></div>
+<div id="diffheadpin"></div>
+<div id="diffseparator"></div>
+<div id="differror" class="differror" style="display: none;"></div>
+<div id="diffview"></div>
+
+</div>
+
+<div id="output" style="display: none; position:absolute; top: 360px; right: 0; z-index:100; background-color: #fff; width: 900px; max-height: 300px; overflow: auto;"></div> <!-- debug output -->
+
+<!-- iframe is invisible, since when visible, its document body is stealing mousemove events from Motion.js (and obscuring popups in Opera)-->
+<iframe id="diffloader" name="diffloader" style="display: none; width: 1px; height: 1px" onload="diff_iframe_onload();"></iframe>
+
+<div style="display: none;"> <!-- templates -->
+
+<div id="difftitle">
+<table class="difftitle">
+<tr>
+<td><div class="diffnodebullet" id="bullet">&nbsp;</div></td>
+<td><span class="difftitledate" id="date"></span></td>
+<td><span class="difftitleauthor" id="author"></span></td>
+<td><a class="button" id="clear" href="#">clear</a></td>
+</tr>
+</table>
+<div class="diffcomment" id="comment"></div>
+</div>
+
+<div id="popuptemplate">
+<div id="node" class="popupnode">
+<table id="buttons" cellpadding="0" cellspacing="0">
+<tr>
+<td align="left"><div id="parents_btn" class="popuptrigger"> parents</div></td>
+<td align="center"><div id="diff_btn" class="popupbutton"> diff</div></td>
+<td align="center"><div id="pin_btn" class="popupbutton">pin </div></td>
+<td align="right"><div id="children_btn" class="popuptrigger">children </div></td>
+</tr>
+</table>
+<div id="date" class="popupdate"></div>
+<div id="author"></div>
+<div id="comment" class="popupcomment"></div>
+<div id="not_loaded">not loaded yet</div>
+</div>
+</div>
+
+</div>
+
+</body>
+</html>
