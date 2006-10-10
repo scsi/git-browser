@@ -202,6 +202,8 @@ sub read_config
 				$inner::http_expires=$';
 			}elsif( m/^git_temp:\s*/ ) {
 				$git::inner::git_temp=$';
+			}elsif( m/^warehouse:\s*/ ) {
+				$inner::warehouse=$';
 			}elsif( m/^repos:\s*/ ) {
 				$section="repos";
 			}
@@ -229,6 +231,16 @@ BEGIN {
 
 if( $^V ge v5.8.0 ) {
 	binmode STDOUT, ':utf8';
+}
+
+sub get_repo_path
+{
+	my ($name) = @_;
+	my $path = $inner::known_repos{$name};
+	if (not defined $path and $inner::warehouse and -d $inner::warehouse.'/'.$name) {
+		$path = $inner::warehouse.'/'.$name;
+	}
+	return $path;
 }
 
 sub get_repo_names
@@ -295,10 +307,10 @@ if( $error eq "null" ) {
 	}elsif( exists $git::{$sub} ) {
 		if( !defined( $repo ) ) {
 			$error=$converter->valueToJson( "git-browser.pl: 'repo' cgi parameter is omitted" );
-		}elsif( !exists $inner::known_repos{$repo} ) {
+		}elsif( !get_repo_path($repo) ) {
 			$error=$converter->valueToJson( "git-browser.pl: unknown repository name specified: $repo" );
 		}else {
-			$ENV{'GIT_DIR'}=$inner::known_repos{$repo};
+			$ENV{'GIT_DIR'}=get_repo_path($repo);
 			eval {
 				$result=&{$git::{$sub}}( $arg );
 			};

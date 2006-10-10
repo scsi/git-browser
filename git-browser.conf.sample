@@ -1,5 +1,6 @@
 path: /usr/bin
 gitbin: /d/src/git/
+warehouse: /srv/git
 repos:
 test tests/test.git
 git /d/src/git/.git
