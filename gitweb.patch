@@ -51,7 +51,7 @@ index 324244c..219cb66 100755
  		      "<td class=\"link\">" .
  		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"summary")}, "summary")   . " | " .
 -		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"shortlog")}, "shortlog") . " | " .
-+		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"graphiclog")}, "graphiclog") . " | " .
++		      $cgi->a({-href => '/git-browser/by-commit.html?r='.$project}, "graphiclog") . " | " .
  		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"log")}, "log") . " | " .
  		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"tree")}, "tree") .
  		      "</td>\n" .
