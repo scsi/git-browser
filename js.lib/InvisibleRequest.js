@@ -33,6 +33,9 @@ InvisibleRequest.get=function( request )
 	// if url is realtive, append the base from current document
 	if( request.url.indexOf( "/" )==-1 ) { // no way to specify relative paths here - they will be normalized on server, and the result will not match the comparison in the handle_responce
 		var base_url=document.location.href;
+		if (base_url.indexOf( "?" ) > -1) {
+			base_url=base_url.substring( 0, base_url.indexOf( "?" ) );
+		}
 		var slash_pos=base_url.lastIndexOf( "/" );
 		if( slash_pos!=-1 ) {
 			request.url=base_url.substring( 0, slash_pos+1 )+request.url;
