@@ -35,6 +35,7 @@ format_log_date=function( date )
 }
 escape_html=function( s )
 {
+	s=s+"";	// ensure it's a string
 	s=s.replace( /\&/g, "&amp;" );
 	s=s.replace( /\</g, "&lt;" );
 	s=s.replace( /\>/g, "&gt;" );
