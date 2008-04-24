@@ -329,7 +329,7 @@ do_diff=function()
 			}else {
 				document.getElementById( "differror" ).style.display="none";
 				document.getElementById( "diffview" ).style.display="";
-				document.getElementById( "diffloader" ).src="git-diff.pl?repo="+common_repo+"&id1="+left_diff_node.id+"&id2="+right_diff_node.id;
+				document.getElementById( "diffloader" ).src="git-diff.cgi?repo="+common_repo+"&id1="+left_diff_node.id+"&id2="+right_diff_node.id;
 			}
 		}
 		update_diffview_height();
