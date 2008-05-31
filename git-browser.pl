@@ -95,7 +95,7 @@ sub get_ref_ids
 	$exec.="PATH=$ENV{PATH} " if $ENV{PATH};
 	$exec.="GIT_EXEC_PATH=$ENV{GIT_EXEC_PATH} " if $ENV{GIT_EXEC_PATH};
 	$exec.="${git::inner::gitbin}git-upload-pack\"";
-	open my $fd, "-|", "${git::inner::gitbin}git-peek-remote --exec=$exec $repo" or die "get_ref_ids: error running git-peek-remote: $!";
+	open my $fd, "-|", "${git::inner::gitbin}git-ls-remote --upload-pack=$exec $repo" or die "get_ref_ids: error running git-peek-remote: $!";
 	my @refs;
 	my %names;
 	while( my $line=<$fd> ) {
