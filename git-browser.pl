@@ -173,7 +173,12 @@ package inner;
 
 sub read_config
 {
-	open my $f, "< git-browser.conf" or return;
+	my $f;
+	if (-e "/etc/git-browser.conf") {
+		open $f, "< /etc/git-browser.conf" or return;
+	} else {
+		open $f, "< git-browser.conf" or return;
+	}
 	my $section="";
 	while( <$f> ) {
 		chomp;

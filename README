@@ -12,7 +12,8 @@ cp *.html *.js *.pl *.css js.lib/* JSON/* <server-dir>
 make sure that git-browser.pl and git-diff.pl are runnable as cgi scripts
 make sure that html files are served as having UTF-8 charset
 
-git-browser.pl reads git-browser.conf file in the current directory.
+git-browser.pl looks for /etc/git-browser.conf, if this file does
+not exists it checks the current directory for git-browser.conf
 Everything in the file is optional, but with empty repository list 
 git browser will show nothing. Sample variant of git-browser.conf
 is provided as git-browser.conf.sample.
