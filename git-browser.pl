@@ -29,14 +29,14 @@ sub git_read_commits
 {
 	my $arg=shift;
 	my $MAX_COUNT= $arg->{shortcomment} ? 400 : 200;
-	my @command=("${git::inner::gitbin}git-rev-list", '--header', '--parents', "--max-count=$MAX_COUNT");
+	my @command=("GIT_DIR=$ENV{'GIT_DIR'} ${git::inner::gitbin}git-rev-list", '--header', '--parents', "--max-count=$MAX_COUNT");
 	push(@command, @{$arg->{id}}, @{$arg->{x}});
 	push(@command, '--', @{$arg->{path}}) if @{$arg->{path}};
 
 	my %commits;
 
 	$/ = "\0";
-	open my $fd, "-|", @command or die "git_read_commits: error running git-rev-list: $!";
+	open my $fd, "-|", "@command" or die "git_read_commits: error running git-rev-list: $!";
 	while( my $commit_line=<$fd> ) {
 		$commit_line =~ s/\r$//;
 		my @commit_lines = split '\n', $commit_line;
