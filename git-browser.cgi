@@ -37,6 +37,7 @@ sub git_read_commits
 
 	$/ = "\0";
 	open my $fd, "-|", "@command" or die "git_read_commits: error running git-rev-list: $!";
+	binmode $fd, ':utf8';
 	while( my $commit_line=<$fd> ) {
 		$commit_line =~ s/\r$//;
 		my @commit_lines = split '\n', $commit_line;

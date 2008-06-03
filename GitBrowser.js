@@ -41,7 +41,7 @@ GitBrowser._server_handler=function( doc, arg )
 		GitBrowser._next_call_server( arg );
 	}
 }
-GitBrowser._g_server_url="git-browser.pl";
+GitBrowser._g_server_url="git-browser.cgi";
 GitBrowser._g_server_timeout_seconds=132;
 GitBrowser._make_server_url=function( arg )
 {
