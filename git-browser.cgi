@@ -17,7 +17,7 @@ $git::inner::git_temp="tmp";
 sub git_get_type
 {
 	my $hash = shift;
-	open my $fd, "-|", "${git::inner::gitbin}git-cat-file", '-t', $hash or die "git_get_type: error running git-cat-file: $!";
+	open my $fd, "-|", "${git::inner::gitbin}git", "cat-file", '-t', $hash or die "git_get_type: error running git cat-file: $!";
 	my $type = <$fd>;
 	close $fd or die "git_get_type: unable to close fd: $!";
 	chomp $type;
@@ -29,14 +29,14 @@ sub git_read_commits
 {
 	my $arg=shift;
 	my $MAX_COUNT= $arg->{shortcomment} ? 400 : 200;
-	my @command=("GIT_DIR=$ENV{'GIT_DIR'} ${git::inner::gitbin}git-rev-list", '--header', '--parents', "--max-count=$MAX_COUNT");
+	my @command=("GIT_DIR=$ENV{'GIT_DIR'} ${git::inner::gitbin}git", "rev-list", '--header', '--parents', "--max-count=$MAX_COUNT");
 	push(@command, @{$arg->{id}}, @{$arg->{x}});
 	push(@command, '--', @{$arg->{path}}) if @{$arg->{path}};
 
 	my %commits;
 
 	$/ = "\0";
-	open my $fd, "-|", "@command" or die "git_read_commits: error running git-rev-list: $!";
+	open my $fd, "-|", "@command" or die "git_read_commits: error running git rev-list: $!";
 	binmode $fd, ':utf8';
 	while( my $commit_line=<$fd> ) {
 		$commit_line =~ s/\r$//;
@@ -95,8 +95,8 @@ sub get_ref_ids
 	my $exec="\"";
 	$exec.="PATH=$ENV{PATH} " if $ENV{PATH};
 	$exec.="GIT_EXEC_PATH=$ENV{GIT_EXEC_PATH} " if $ENV{GIT_EXEC_PATH};
-	$exec.="${git::inner::gitbin}git-upload-pack\"";
-	open my $fd, "-|", "${git::inner::gitbin}git-ls-remote --upload-pack=$exec $repo" or die "get_ref_ids: error running git-peek-remote: $!";
+	$exec.="${git::inner::gitbin}git upload-pack\"";
+	open my $fd, "-|", "${git::inner::gitbin}git ls-remote --upload-pack=$exec $repo" or die "get_ref_ids: error running git ls-remote: $!";
 	my @refs;
 	my %names;
 	while( my $line=<$fd> ) {
