@@ -11,6 +11,7 @@ This file is licensed under the GNU General Public License version 2.
 <script type="text/javascript" src="js.lib/InvisibleRequest.js"></script>
 <script type="text/javascript" src="js.lib/Motion.js"></script>
 <script type="text/javascript" src="js.lib/wz_jsgraphics.js"></script>
+<script type="text/javascript" src="GitConfig.js"></script>
 <script type="text/javascript" src="GitBrowser.js"></script>
 <script type="text/javascript" src="GitDiagram.js"></script>
 <script type="text/javascript">
@@ -58,7 +59,7 @@ make_row_html=function( diagram, column, column_i, row_height )
 			comment_html+="<span class=\""+style+"\">"+escape_html( tag_text )+"</span>";
 		}
 	}
-	comment_html+="<a href=\"/w/"+diagram.m_repos[0]+"?a=commit;h="+node.id+"\">"+escape_html( node.comment )+"</a>";
+	comment_html+="<a href=\""+cfg_gitweb_url+diagram.m_repos[0]+"?a=commit;h="+node.id+"\">"+escape_html( node.comment )+"</a>";
 	var indent=column.lines.length*row_height;
 	comment_html="<td><div class=\"logcell\" style=\"padding-left: "+indent+"px;\">"+comment_html+"</div></td>";
 	var row_html=comment_html+"<td><div class=\"logcell\">"+escape_html( node.author )+"</div></td>";

@@ -28,3 +28,6 @@ warehouse: <path to fallback dir where to look for repos>
 repos:
 <repo-name> <repo GIT_DIR>
 ...
+
+Also, there is client-side configuration in GitConfig.js. This is used
+for configuring gitweb URL in order to create proper links from commits.
