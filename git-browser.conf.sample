@@ -1,4 +1,4 @@
-gitbin: /d/src/git/
+gitbin: /d/src/git/git
 warehouse: /srv/git
 repos:
 test tests/test.git

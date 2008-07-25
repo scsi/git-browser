@@ -21,7 +21,7 @@ is provided as git-browser.conf.sample.
 Format of the file:
 
 path: overrides your $PATH
-gitbin: <path to git binaries, with trailing />
+gitbin: <path to git binary, including the executable name>
 git_temp: <path where git-diff.pl will create temp files>
 http_expires: <value for CGI::header 'expires' parameter, for every responce>
 warehouse: <path to fallback dir where to look for repos>

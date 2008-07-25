@@ -31,13 +31,13 @@ my $request=CGI::new();
 package git::inner;
 
 # location of the git-core binaries
-$git::inner::gitbin="";
+$git::inner::gitbin="git";
 $git::inner::git_temp="/tmp/gitweb";
 
 sub git_commitdiff {
 	my ($id1, $id2)=@_;
 	mkdir($git::inner::git_temp, 0700);
-	open my $fd, "-|", "${git::inner::gitbin}/git", "diff-tree", '-r', $id1, $id2 or die_error(undef, "Open failed.");
+	open my $fd, "-|", "${git::inner::gitbin}", "diff-tree", '-r', $id1, $id2 or die_error(undef, "Open failed.");
 	my (@difftree) = map { chomp; $_ } <$fd>;
 	close $fd or die_error(undef, "Reading diff-tree failed.");
 
@@ -94,7 +94,7 @@ sub git_diff_print {
 	if (defined $from) {
 		$from_tmp = "${git::inner::git_temp}/gitweb_" . $$ . "_from";
 		open my $fd2, "> $from_tmp" or die "error creating $from_tmp: $! $@";
-		open my $fd, "-|", "${git::inner::gitbin}/git", "cat-file", 'blob', $from;
+		open my $fd, "-|", "${git::inner::gitbin}", "cat-file", 'blob', $from;
 		my @file = <$fd>;
 		print $fd2 @file;
 		close $fd2;
@@ -105,7 +105,7 @@ sub git_diff_print {
 	if (defined $to) {
 		$to_tmp = "${git::inner::git_temp}/gitweb_" . $$ . "_to";
 		open my $fd2, "> $to_tmp" or die "error creating $from_tmp: $! $@";
-		open my $fd, "-|", "${git::inner::gitbin}/git", "cat-file", 'blob', $to;
+		open my $fd, "-|", "${git::inner::gitbin}", "cat-file", 'blob', $to;
 		my @file = <$fd>;
 		print $fd2 @file;
 		close $fd2;
