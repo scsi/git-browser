@@ -10,16 +10,35 @@
 
 package git::inner;
 
+use File::Spec;
+
 # location of the git-core binaries
 $git::inner::gitbin="git";
 $git::inner::git_temp="tmp";
 
+# opens a "-|" cmd pipe handle with 2>/dev/null and returns it
+sub cmd_pipe {
+	open(NULL, ">", File::Spec->devnull) or die "Cannot open devnull: $!";
+	open(SAVEERR, ">&STDERR") || die "couldn't dup STDERR: $!";
+	open(STDERR, ">&NULL") || die "couldn't dup NULL to STDERR: $!";
+	my $result = open(my $fd, "-|", @_);
+	open(STDERR, ">&SAVEERR") || die "couldn't dup SAVERR to STDERR: $!";
+	close(SAVEERR) or die "couldn't close SAVEERR: $!";
+	close(NULL) or die "couldn't close NULL: $!";
+	return $result ? $fd : undef;
+}
+
+# opens a "-|" git_cmd pipe handle with 2>/dev/null and returns it
+sub git_cmd_pipe {
+	return cmd_pipe "${git::inner::gitbin}", @_;
+}
+
 sub git_get_type
 {
 	my $hash = shift;
-	open my $fd, "-|", "${git::inner::gitbin}", "cat-file", '-t', $hash or die "git_get_type: error running git cat-file: $!";
+	defined(my $fd = git_cmd_pipe "cat-file", '-t', $hash) or die "git_get_type: error running git cat-file: $!";
 	my $type = <$fd>;
-	close $fd or die "git_get_type: unable to close fd: $!";
+	close $fd;
 	chomp $type;
 	$type =~ s/\r$//;
 	return $type;
@@ -36,7 +55,7 @@ sub git_read_commits
 	my %commits;
 
 	$/ = "\0";
-	open my $fd, "-|", "@command" or die "git_read_commits: error running git rev-list: $!";
+	defined(my $fd = cmd_pipe "@command") or die "git_read_commits: error running git rev-list: $!";
 	binmode $fd, ':utf8';
 	while( my $commit_line=<$fd> ) {
 		$commit_line =~ s/\r$//;
@@ -82,7 +101,7 @@ sub git_read_commits
 
 		$commits{$co{'id'}}=\%co;
 	}
-	close $fd or die "git_read_commit: unable to close fd: $!";
+	close $fd;
 	$/ = "\n";
 
 	return \%commits;
@@ -96,7 +115,7 @@ sub get_ref_ids
 	$exec.="PATH=$ENV{PATH} " if $ENV{PATH};
 	$exec.="GIT_EXEC_PATH=$ENV{GIT_EXEC_PATH} " if $ENV{GIT_EXEC_PATH};
 	$exec.="${git::inner::gitbin} upload-pack\"";
-	open my $fd, "-|", "${git::inner::gitbin} ls-remote --upload-pack=$exec $repo" or die "get_ref_ids: error running git ls-remote: $!";
+	defined(my $fd = cmd_pipe "${git::inner::gitbin} ls-remote --upload-pack=$exec $repo") or die "get_ref_ids: error running git ls-remote: $!";
 	my @refs;
 	my %names;
 	while( my $line=<$fd> ) {
@@ -115,7 +134,7 @@ sub get_ref_ids
 			push @refs, { type=>"t", id=>$id, name=>$name };
 		}
 	}
-	close $fd or die "git_get_type: unable to close fd: $!";
+	close $fd;
 	# keep only commits
 	my @result;
 	for my $ref (@refs) {
