@@ -33,6 +33,26 @@ sub git_cmd_pipe {
 	return cmd_pipe "${git::inner::gitbin}", @_;
 }
 
+my $fallback_encoding = '';
+INIT {
+	$fallback_encoding = Encode::find_encoding('Windows-1252');
+	$fallback_encoding = Encode::find_encoding('ISO-8859-1')
+		unless $fallback_encoding;
+}
+
+# decode sequences of octets in utf8 into Perl's internal form,
+# which is utf-8 with utf8 flag set if needed.  git-browser writes out
+# in utf-8 thanks to "binmode STDOUT, ':utf8'" at beginning
+sub to_utf8 {
+	my $str = shift || '';
+	if (utf8::valid($str)) {
+		utf8::decode($str);
+		return $str;
+	} else {
+		return Encode::decode($fallback_encoding, $str, Encode::FB_DEFAULT);
+	}
+}
+
 sub git_get_type
 {
 	my $hash = shift;
@@ -56,10 +76,13 @@ sub git_read_commits
 
 	$/ = "\0";
 	defined(my $fd = cmd_pipe "@command") or die "git_read_commits: error running git rev-list: $!";
-	binmode $fd, ':utf8';
+	binmode $fd;
 	while( my $commit_line=<$fd> ) {
 		$commit_line =~ s/\r$//;
-		my @commit_lines = split '\n', $commit_line;
+		my @commit_lines = ();
+		foreach (split '\n', $commit_line) {
+			push @commit_lines, to_utf8($_);
+		}
 		pop @commit_lines;
 		my %co;
 
@@ -247,6 +270,7 @@ BEGIN {
 		no strict "refs";
 		*{"Encode::FB_DEFAULT"}=sub { 1; };
 		*{"Encode::decode"}=sub { my ($a,$s,$b)=@_; return $s; };
+		*{"Encode::find_encoding"}=sub { return undef; };
 	}
 }
 
