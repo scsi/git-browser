@@ -282,6 +282,12 @@ sub get_repo_path
 {
 	my ($name) = @_;
 	my $path = $inner::known_repos{$name};
+	if (not defined $path and
+		$name =~ m!^/*_! ||
+		!($name =~ m!\.git/*$!) ||
+		$name =~ m!\.git/.*\.git/*$!i) {
+		return undef;
+	}
 	if (not defined $path and $inner::warehouse and -d $inner::warehouse.'/'.$name) {
 		$path = $inner::warehouse.'/'.$name;
 	}
