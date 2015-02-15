@@ -284,6 +284,7 @@ sub get_repo_path
 	my $path = $inner::known_repos{$name};
 	if (not defined $path and
 		$name =~ m!^/*_! ||
+		$name =~ m!\.\.! ||
 		!($name =~ m!\.git/*$!) ||
 		$name =~ m!\.git/.*\.git/*$!i) {
 		return undef;
