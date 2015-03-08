@@ -18,7 +18,7 @@ $git::inner::git_temp="tmp";
 
 # opens a "-|" cmd pipe handle with 2>/dev/null and returns it
 sub cmd_pipe {
-	open(NULL, ">", File::Spec->devnull) or die "Cannot open devnull: $!";
+	open(NULL, '>', File::Spec->devnull) or die "Cannot open devnull: $!";
 	open(SAVEERR, ">&STDERR") || die "couldn't dup STDERR: $!";
 	open(STDERR, ">&NULL") || die "couldn't dup NULL to STDERR: $!";
 	my $result = open(my $fd, "-|", @_);
@@ -217,10 +217,11 @@ package inner;
 sub read_config
 {
 	my $f;
-	if (-e "git-browser.conf") {
-		open $f, "< git-browser.conf" or return;
+	my $GITBROWSER_CONFIG = $ENV{'GITBROWSER_CONFIG'} || "git-browser.conf";
+	if (-e "$GITBROWSER_CONFIG") {
+		open $f, '<', $GITBROWSER_CONFIG or return;
 	} else {
-		open $f, "< /etc/git-browser.conf" or return;
+		open $f, '<', "/etc/git-browser.conf" or return;
 	}
 	my $section="";
 	while( <$f> ) {
