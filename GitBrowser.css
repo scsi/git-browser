@@ -1,5 +1,5 @@
 * { padding: 0; margin: 0 }
-body { font: normal normal 12px sans-serif; }
+body { font: normal normal 12px sans-serif; background-color: white; color: black; }
 
 .linkbutton 	{ background-color: #dde; padding: 1px 5px; margin: 3px 0; border: 1px solid #a0a0ff; text-decoration: none; color: #008; }
 .linkbutton:hover { border: 1px solid #0000ff; }
