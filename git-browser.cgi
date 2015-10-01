@@ -273,6 +273,8 @@ BEGIN {
 		*{"Encode::decode"}=sub { my ($a,$s,$b)=@_; return $s; };
 		*{"Encode::find_encoding"}=sub { return undef; };
 	}
+	eval 'sub CGI::multi_param {CGI::param(@_)}'
+		unless CGI->can("multi_param");
 }
 
 if( $^V ge v5.8.0 ) {
@@ -323,14 +325,14 @@ my $arg={};
 my $result="null";
 my $error="null";
 
-my @names=$request->param;
+my @names=$request->multi_param;
 for my $pn (@names) {
 	if( $pn eq "repo" ) {
 		$repo=$request->param( "repo" );
 	}elsif( $pn eq "sub" ) {
 		$sub=$request->param( "sub" );
 	}else {
-		my @v=$request->param( $pn );
+		my @v=$request->multi_param( $pn );
 		for my $v (@v) {
 			$error=$converter->valueToJson( "invalid cgi param value for '$pn': '$v'\n" ) unless defined validate_input( $v );
 		}
