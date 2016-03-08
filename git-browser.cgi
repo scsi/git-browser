@@ -11,6 +11,7 @@
 package git::inner;
 
 use File::Spec;
+use vars qw($gitdir);
 
 # location of the git-core binaries
 $git::inner::gitbin="git";
@@ -30,7 +31,7 @@ sub cmd_pipe {
 
 # opens a "-|" git_cmd pipe handle with 2>/dev/null and returns it
 sub git_cmd_pipe {
-	return cmd_pipe "${git::inner::gitbin}", @_;
+	return cmd_pipe $git::inner::gitbin, "--git-dir=".$gitdir, @_;
 }
 
 my $fallback_encoding = '';
@@ -68,14 +69,14 @@ sub git_read_commits
 {
 	my $arg=shift;
 	my $MAX_COUNT= $arg->{shortcomment} ? 400 : 200;
-	my @command=("GIT_DIR=$ENV{'GIT_DIR'} ${git::inner::gitbin}", "rev-list", '--header', '--parents', "--max-count=$MAX_COUNT");
+	my @command=('rev-list', '--header', '--parents', "--max-count=$MAX_COUNT");
 	push(@command, @{$arg->{id}}, @{$arg->{x}});
 	push(@command, '--', @{$arg->{path}}) if @{$arg->{path}};
 
 	my %commits;
 
 	$/ = "\0";
-	defined(my $fd = cmd_pipe "@command") or die "git_read_commits: error running git rev-list: $!";
+	defined(my $fd = git_cmd_pipe @command) or die "git_read_commits: error running git rev-list: $!";
 	binmode $fd;
 	while( my $commit_line=<$fd> ) {
 		$commit_line =~ s/\r$//;
@@ -133,12 +134,7 @@ sub git_read_commits
 
 sub get_ref_ids
 {
-	my $repo=$ENV{'GIT_DIR'};
-	my $exec="\"";
-	$exec.="PATH=$ENV{PATH} " if $ENV{PATH};
-	$exec.="GIT_EXEC_PATH=$ENV{GIT_EXEC_PATH} " if $ENV{GIT_EXEC_PATH};
-	$exec.="${git::inner::gitbin} upload-pack\"";
-	defined(my $fd = cmd_pipe "${git::inner::gitbin} ls-remote --upload-pack=$exec $repo") or die "get_ref_ids: error running git ls-remote: $!";
+	defined(my $fd = git_cmd_pipe 'show-ref', '--head', '--dereference') or die "get_ref_ids: error running git show-ref: $!";
 	my @refs;
 	my %names;
 	while( my $line=<$fd> ) {
@@ -240,7 +236,6 @@ sub read_config
 		}else {
 			if( m/^gitbin:\s*/ ) {
 				$git::inner::gitbin=$';
-				$ENV{GIT_EXEC_PATH}=$';
 			}elsif( m/^path:\s*/ ) {
 				$ENV{PATH}=$';
 			}elsif( m/^http_expires:\s*/ ) {
@@ -365,7 +360,7 @@ if( $error eq "null" ) {
 		}elsif( !get_repo_path($repo) ) {
 			$error=$converter->valueToJson( "git-browser.pl: unknown repository name specified: $repo" );
 		}else {
-			$ENV{'GIT_DIR'}=get_repo_path($repo);
+			local $git::inner::gitdir=get_repo_path($repo);
 			eval {
 				$result=&{$git::{$sub}}( $arg );
 			};
