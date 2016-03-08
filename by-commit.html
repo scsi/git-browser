@@ -55,7 +55,7 @@ make_row_html=function( diagram, column, column_i, row_height )
 			if( diagram.m_repos.length>1 ) {
 				tag_text=tag.repo+":"+tag_text;
 			}
-			var style= tag.type=="t" ? "logtag" : "loghead";
+			var style= tag.type=="t" ? "logtag" : (tag_text=="HEAD" ? "loghead" : "logbranch");
 			comment_html+="<span class=\""+style+"\">"+escape_html( tag_text )+"</span>";
 		}
 	}
@@ -232,7 +232,8 @@ body { height: 99.8%; font: normal normal 11px sans-serif; overflow: hidden; }
 .logcell { height: 1.2em; overflow: hidden; white-space: nowrap; }
 .logcell a { text-decoration: none; color: #000000; }
 .logcell a:hover { text-decoration: underline; color: #880000; }
-.loghead { padding: 0 4px; background-color: #ffff99; }
+.loghead { padding: 0 4px; background-color: #d3d3ff; }
+.logbranch { padding: 0 4px; background-color: #ffff99; }
 .logtag { padding: 0 4px; background-color: #99ff99; }	
 
 </style>
