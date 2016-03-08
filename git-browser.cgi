@@ -139,7 +139,7 @@ sub get_ref_ids
 	my %names;
 	while( my $line=<$fd> ) {
 		my ($id,$name)=split ' ', $line;
-		if( $name=~s/^refs\/heads\/// ) {
+		if( $name=~s/^refs\/heads\/// || $name eq "HEAD" ) {
 			push @refs, { type=>"h", id=>$id, name=>$name };
 		}elsif( $name=~s/^refs\/tags\/// ) {
 			my $deref=0;
