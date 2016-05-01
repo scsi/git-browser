@@ -210,6 +210,16 @@ sub commits_from_ids
 
 package inner;
 
+# Set the global doconfig setting in the GITBROWSER_CONFIG file to the full
+# path to a perl source file to run to alter these settings
+
+# If $check_path is set to a subroutine reference, it will be called
+# by get_repo_path with two arguments, the name of the repo and its
+# path which will be undef if it's not a known repo.  If the function
+# returns false, access to the repo will be denied.
+# $check_path = sub { my ($name, $path) = @_; $name ~! /restricted/i; };
+use vars qw($check_path);
+
 sub read_config
 {
 	my $f;
@@ -220,6 +230,7 @@ sub read_config
 		open $f, '<', "/etc/git-browser.conf" or return;
 	}
 	my $section="";
+	my $configfile="";
 	while( <$f> ) {
 		chomp;
 		$_=~ s/\r$//;
@@ -244,10 +255,16 @@ sub read_config
 				$git::inner::git_temp=$';
 			}elsif( m/^warehouse:\s*/ ) {
 				$inner::warehouse=$';
+			}elsif( m/^doconfig:\s*/ ) {
+				$configfile=$';
 			}elsif( m/^repos:\s*/ ) {
 				$section="repos";
 			}
 		}
+	}
+	if ($configfile && -e $configfile) {
+		do $configfile;
+		die $@ if $@;
 	}
 }
 
@@ -280,6 +297,8 @@ sub get_repo_path
 {
 	my ($name) = @_;
 	my $path = $inner::known_repos{$name};
+	return undef
+	    if ref($inner::check_path) eq 'CODE' && !&{$inner::check_path}($name, $path);
 	if (not defined $path and $inner::warehouse and -d $inner::warehouse.'/'.$name) {
 		$path = $inner::warehouse.'/'.$name;
 	}
