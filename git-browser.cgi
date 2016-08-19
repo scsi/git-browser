@@ -194,7 +194,7 @@ sub commits_from_refs
 	for (@{$arg->{ref}}) {
 		my ($type,$name)=split ",";
 		if( "r" eq $type ) {
-			push @start_ids, $_->{id} for (grep( "h" eq $_->{type}, @$refs )); # all heads
+			push @start_ids, $_->{id} for (grep( $_->{type} =~ /^[ht]$/, @$refs )); # all heads & tags
 		}else {
 			push @start_ids, $_->{id} for (grep( $name eq $_->{name} && $type eq $_->{type}, @$refs ));
 		}
